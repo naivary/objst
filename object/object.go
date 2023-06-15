@@ -1,6 +1,8 @@
 package object
 
 import (
+	"bytes"
+	"encoding/gob"
 	"net/url"
 	"strconv"
 	"time"
@@ -10,25 +12,50 @@ import (
 
 type Object struct {
 	// unique identifier
-	id string
+	ID string
 	// unique alias for the object
-	name  string
-	owner string
+	Name  string
+	Owner string
 	// metadata of the object. The naming of the
 	// of the keys follow the golang conventions
 	// (e.g. camelCase).
-	metadata url.Values
+	Meta url.Values
 }
 
 func New(name, owner string) *Object {
 	o := &Object{
-		id:       uuid.NewString(),
-		name:     name,
-		owner:    owner,
-		metadata: url.Values{},
+		ID:    uuid.NewString(),
+		Name:  name,
+		Owner: owner,
+		Meta:  url.Values{},
 	}
 	o.setDefaultMetadata()
 	return o
+}
+
+func (o *Object) SetMeta(k, v string) {
+	o.Meta.Set(k, v)
+}
+
+func (o *Object) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	gob.Register(url.Values{})
+	if err := gob.NewEncoder(&buf).Encode(&o); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (o *Object) Unmarshal(data []byte) error {
+	r := bytes.NewReader(data)
+	return gob.NewDecoder(r).Decode(&o)
+}
+
+func (o Object) IsValid() error {
+	if !o.Meta.Has("contentType") {
+		return ErrContentTypeNotExist
+	}
+	return nil
 }
 
 // the default metadata inclused:
@@ -36,17 +63,6 @@ func New(name, owner string) *Object {
 // lastModified: Unix Timestamp of the last modification
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
-	o.metadata.Add("createdAt", t)
-	o.metadata.Add("lastModified", t)
-}
-
-func (o *Object) SetMetadata(k, v string) {
-	o.metadata.Set(k, v)
-}
-
-func (o Object) isValid() error {
-	if !o.metadata.Has("contentType") {
-		return ErrContentTypeNotExist
-	}
-	return nil
+	o.Meta.Add("createdAt", t)
+	o.Meta.Add("lastModified", t)
 }
