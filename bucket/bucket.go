@@ -1,6 +1,7 @@
 package bucket
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -67,6 +68,37 @@ func (b Bucket) Get(id string) (*object.Object, error) {
 		return obj.Unmarshal(data)
 	})
 	return &obj, err
+}
+
+func (b Bucket) GetByMetasOr(metas url.Values) ([]*object.Object, error) {
+	objs := make([]*object.Object, 0, 10)
+	err := b.store.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = 10
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			return it.Item().Value(func(val []byte) error {
+				obj := &object.Object{}
+				if err := obj.Unmarshal(val); err != nil {
+					return err
+				}
+				for k, v := range metas {
+					// its save to assume that v[0] exists because
+					// metadata will only be replaced and not appended
+					// in a object
+					if obj.Meta.Has(k) && obj.Meta.Get(k) == v[0] {
+						objs = append(objs, obj)
+						return nil
+					}
+				}
+				return nil
+			})
+		}
+		return nil
+	})
+	return objs, err
 }
 
 func (b Bucket) Delete(id string) error {

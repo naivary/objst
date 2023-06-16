@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 
@@ -108,6 +109,24 @@ func TestDelete(t *testing.T) {
 	_, err := tB.Get(o.ID)
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
+	}
+}
+
+func TestGetByMetasOr(t *testing.T) {
+	o := tObj()
+	if err := tB.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	v := url.Values{}
+	v.Set(object.ContentType, tCt)
+	objs, err := tB.GetByMetasOr(v)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(objs) != 1 {
+		t.Fatalf("at least one object should be contained. Got: %d", len(objs))
 	}
 }
 
