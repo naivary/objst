@@ -18,29 +18,38 @@ var (
 	tName  string
 )
 
-func setup() (*Bucket, error) {
+func setup() error {
 	opts := badger.DefaultOptions("/tmp/badger")
-	return New(opts)
-}
-
-func destroy() {
-	tB.store.Close()
-}
-
-func TestMain(t *testing.M) {
-	// setup
-	b, err := setup()
+	b, err := New(opts)
 	if err != nil {
-		slog.Error("something went wrong while setting up the test", slog.String("msg", err.Error()))
-		return
+		return err
 	}
 	tB = b
 	tOwner = uuid.NewString()
 	tName = fmt.Sprintf("obj_name_%s", tOwner)
+	return nil
+}
+
+func destroy() error {
+	if err := tB.store.Close(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestMain(t *testing.M) {
+	// setup
+	if err := setup(); err != nil {
+		slog.Error("something went wrong while setting up the test", slog.String("msg", err.Error()))
+		return
+	}
 	// run
 	code := t.Run()
 	// cleanup
-	destroy()
+	if err := destroy(); err != nil {
+		slog.Error("something went wrong while setting up the test", slog.String("msg", err.Error()))
+		return
+	}
 	os.Exit(code)
 }
 
@@ -80,4 +89,15 @@ func TestDelete(t *testing.T) {
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
 	}
+}
+
+func BenchmarkCreate(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		o := object.New(uuid.NewString(), tOwner)
+		o.SetMeta(object.ContentType, "html/text")
+		if err := tB.Create(o); err != nil {
+			b.Error(err)
+		}
+	}
+	b.ReportAllocs()
 }
