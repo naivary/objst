@@ -1,8 +1,11 @@
 package bucket
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"testing"
 
@@ -83,6 +86,9 @@ func TestGet(t *testing.T) {
 	if !oG.Meta.Has(object.ContentType) {
 		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.Meta.Get(object.ContentType), oG.Meta.Get(object.ContentType))
 	}
+	if !bytes.Equal(oG.Payload, o.Payload) {
+		t.Fatalf("payload is not the same. Got: %s. Expected: %s", oG.Payload, o.Payload)
+	}
 }
 
 func TestDelete(t *testing.T) {
@@ -125,4 +131,24 @@ func BenchmarkGet(b *testing.B) {
 		}
 	}
 	b.ReportAllocs()
+}
+
+func TestGetByMetadata(t *testing.T) {
+	o1 := tObj()
+	o2 := tObj()
+	if err := tB.Create(o1); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := tB.Create(o2); err != nil {
+		t.Error(err)
+		return
+	}
+	v := url.Values{}
+	v.Set(object.ContentType, tCt)
+	objs, err := tB.GetByMetadata(context.Background(), v)
+	if err != nil {
+		t.Error(err)
+	}
+	_ = objs
 }

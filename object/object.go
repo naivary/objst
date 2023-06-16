@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	// Content type key to use
-	// for meta data.
+	// Content type key to use for meta data.
 	ContentType  = "contentType"
 	createdAt    = "createdAt"
 	lastModified = "lastModified"

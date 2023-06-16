@@ -1,6 +1,8 @@
 package bucket
 
 import (
+	"context"
+	"net/url"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -60,6 +62,11 @@ func (b Bucket) Delete(id string) error {
 	return b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
+}
+
+func (b Bucket) GetByMetadata(ctx context.Context, meta url.Values) ([]*object.Object, error) {
+	objs := make([]*object.Object, 0)
+	return objs, nil
 }
 
 // gc garbace collects every 10 minutes
