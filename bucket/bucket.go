@@ -1,8 +1,6 @@
 package bucket
 
 import (
-	"context"
-	"net/url"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -30,9 +28,6 @@ func New(opts badger.Options) (*Bucket, error) {
 
 func (b Bucket) Create(obj *object.Object) error {
 	return b.store.Update(func(txn *badger.Txn) error {
-		if err := obj.IsValid(); err != nil {
-			return err
-		}
 		data, err := obj.Marshal()
 		if err != nil {
 			return err
@@ -40,6 +35,22 @@ func (b Bucket) Create(obj *object.Object) error {
 		e := badger.NewEntry([]byte(obj.ID), data)
 		return txn.SetEntry(e)
 	})
+}
+
+func (b Bucket) BatchCreate(objs []*object.Object) error {
+	wb := b.store.NewWriteBatch()
+	defer wb.Cancel()
+	for _, obj := range objs {
+		data, err := obj.Marshal()
+		if err != nil {
+			return err
+		}
+		e := badger.NewEntry([]byte(obj.ID), data)
+		if err := wb.SetEntry(e); err != nil {
+			return err
+		}
+	}
+	return wb.Flush()
 }
 
 func (b Bucket) Get(id string) (*object.Object, error) {
@@ -62,11 +73,6 @@ func (b Bucket) Delete(id string) error {
 	return b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
-}
-
-func (b Bucket) GetByMetadata(ctx context.Context, meta url.Values) ([]*object.Object, error) {
-	objs := make([]*object.Object, 0)
-	return objs, nil
 }
 
 // gc garbace collects every 10 minutes

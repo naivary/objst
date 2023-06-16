@@ -2,10 +2,8 @@ package bucket
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
 	"testing"
 
@@ -32,6 +30,14 @@ func tObj() *object.Object {
 	o.SetMeta(object.ContentType, tCt)
 	o.Write([]byte(random.String(10)))
 	return o
+}
+
+func tNObj(n int) []*object.Object {
+	objs := make([]*object.Object, 0, n)
+	for i := 0; i < n; i++ {
+		objs = append(objs, tObj())
+	}
+	return objs
 }
 
 func setup() error {
@@ -107,8 +113,7 @@ func TestDelete(t *testing.T) {
 
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		o := tObj()
-		if err := tB.Create(o); err != nil {
+		if err := tB.Create(tObj()); err != nil {
 			b.Error(err)
 		}
 	}
@@ -116,13 +121,12 @@ func BenchmarkCreate(b *testing.B) {
 }
 
 func BenchmarkGet(b *testing.B) {
-	objs := make([]*object.Object, 0, b.N)
-	for i := 0; i < b.N; i++ {
-		o := tObj()
-		if err := tB.Create(o); err != nil {
+	objs := tNObj(b.N)
+	for _, obj := range objs {
+		if err := tB.Create(obj); err != nil {
 			b.Error(err)
+			return
 		}
-		objs = append(objs, o)
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -133,22 +137,12 @@ func BenchmarkGet(b *testing.B) {
 	b.ReportAllocs()
 }
 
-func TestGetByMetadata(t *testing.T) {
-	o1 := tObj()
-	o2 := tObj()
-	if err := tB.Create(o1); err != nil {
-		t.Error(err)
+func BenchmarkBatchCreate(b *testing.B) {
+	objs := tNObj(b.N)
+	b.ResetTimer()
+	if err := tB.BatchCreate(objs); err != nil {
+		b.Error(err)
 		return
 	}
-	if err := tB.Create(o2); err != nil {
-		t.Error(err)
-		return
-	}
-	v := url.Values{}
-	v.Set(object.ContentType, tCt)
-	objs, err := tB.GetByMetadata(context.Background(), v)
-	if err != nil {
-		t.Error(err)
-	}
-	_ = objs
+	b.ReportAllocs()
 }
