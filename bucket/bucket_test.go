@@ -108,3 +108,21 @@ func BenchmarkCreate(b *testing.B) {
 	}
 	b.ReportAllocs()
 }
+
+func BenchmarkGet(b *testing.B) {
+	objs := make([]*object.Object, 0, b.N)
+	for i := 0; i < b.N; i++ {
+		o := tObj()
+		if err := tB.Create(o); err != nil {
+			b.Error(err)
+		}
+		objs = append(objs, o)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := tB.Get(objs[i].ID); err != nil {
+			b.Error(err)
+		}
+	}
+	b.ReportAllocs()
+}

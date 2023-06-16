@@ -26,7 +26,7 @@ func New(opts badger.Options) (*Bucket, error) {
 		store:  db,
 		logger: logger.New(context.Background()),
 	}
-	go b.gcValues()
+	go b.gc()
 	return b, nil
 }
 
@@ -66,12 +66,17 @@ func (b Bucket) Delete(id string) error {
 	})
 }
 
-func (b Bucket) gcValues() {
+// gc garbace collects every 10 minutes
+// the values of the key value store.
+func (b Bucket) gc() {
 	ticker := time.NewTicker(10 * time.Minute)
 	for range ticker.C {
+		if err := b.store.Close(); err != nil {
+			slog.Error("something went wrong", slog.String("msg", err.Error()))
+			return
+		}
+		ticker.Stop()
 		if err := b.store.RunValueLogGC(0.7); err != nil {
-			ticker.Stop()
-			b.store.Close()
 			slog.Error("something went wrong", slog.String("msg", err.Error()))
 			return
 		}
