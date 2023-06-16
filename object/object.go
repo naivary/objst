@@ -54,6 +54,9 @@ func (o *Object) SetMeta(k, v string) {
 }
 
 func (o *Object) Marshal() ([]byte, error) {
+	if err := o.IsValid(); err != nil {
+		return nil, err
+	}
 	var buf bytes.Buffer
 	o.Payload = o.pl.Bytes()
 	if err := gob.NewEncoder(&buf).Encode(&o); err != nil {
