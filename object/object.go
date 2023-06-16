@@ -10,6 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	// Content type key to use
+	// for meta data.
+	ContentType  = "contentType"
+	createdAt    = "createdAt"
+	lastModified = "lastModified"
+)
+
 type Object struct {
 	// unique identifier
 	ID string
@@ -33,13 +41,16 @@ func New(name, owner string) *Object {
 	return o
 }
 
+// SetMeta will set the given key and
+// value as a meta data key-pair, over-
+// writing any key-pair which has been
+// set before.
 func (o *Object) SetMeta(k, v string) {
 	o.Meta.Set(k, v)
 }
 
 func (o *Object) Marshal() ([]byte, error) {
 	var buf bytes.Buffer
-	gob.Register(url.Values{})
 	if err := gob.NewEncoder(&buf).Encode(&o); err != nil {
 		return nil, err
 	}
@@ -52,7 +63,7 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) IsValid() error {
-	if !o.Meta.Has("contentType") {
+	if !o.Meta.Has(ContentType) {
 		return ErrContentTypeNotExist
 	}
 	return nil
@@ -63,6 +74,6 @@ func (o Object) IsValid() error {
 // lastModified: Unix Timestamp of the last modification
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
-	o.Meta.Add("createdAt", t)
-	o.Meta.Add("lastModified", t)
+	o.Meta.Add(createdAt, t)
+	o.Meta.Add(lastModified, t)
 }

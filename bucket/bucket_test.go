@@ -3,6 +3,7 @@ package bucket
 import (
 	"errors"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
@@ -37,14 +38,15 @@ func TestMain(t *testing.M) {
 	tOwner = uuid.NewString()
 	tName = fmt.Sprintf("obj_name_%s", tOwner)
 	// run
-	t.Run()
+	code := t.Run()
 	// cleanup
 	destroy()
+	os.Exit(code)
 }
 
 func TestCreate(t *testing.T) {
 	o := object.New(tName, tOwner)
-	o.SetMeta("contentType", "html/text")
+	o.SetMeta(object.ContentType, "html/text")
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
@@ -52,7 +54,7 @@ func TestCreate(t *testing.T) {
 
 func TestGet(t *testing.T) {
 	o := object.New(tName, tOwner)
-	o.SetMeta("contentType", "html/text")
+	o.SetMeta(object.ContentType, "html/text")
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
@@ -67,7 +69,7 @@ func TestGet(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	o := object.New(tName, tOwner)
-	o.SetMeta("contentType", "html/text")
+	o.SetMeta(object.ContentType, "html/text")
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
