@@ -2,10 +2,12 @@ package bucket
 
 import (
 	"context"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/naivary/objst/logger"
 	"github.com/naivary/objst/object"
+	"golang.org/x/exp/slog"
 )
 
 // Bucket is the actual object storage
@@ -24,6 +26,7 @@ func New(opts badger.Options) (*Bucket, error) {
 		store:  db,
 		logger: logger.New(context.Background()),
 	}
+	go b.gcValues()
 	return b, nil
 }
 
@@ -61,4 +64,16 @@ func (b Bucket) Delete(id string) error {
 	return b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
+}
+
+func (b Bucket) gcValues() {
+	ticker := time.NewTicker(10 * time.Minute)
+	for range ticker.C {
+		if err := b.store.RunValueLogGC(0.7); err != nil {
+			ticker.Stop()
+			b.store.Close()
+			slog.Error("something went wrong", slog.String("msg", err.Error()))
+			return
+		}
+	}
 }

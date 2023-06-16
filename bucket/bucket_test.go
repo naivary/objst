@@ -9,14 +9,27 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/google/uuid"
 	"github.com/naivary/objst/object"
+	"github.com/naivary/objst/random"
 	"golang.org/x/exp/slog"
 )
 
-var (
-	tB     *Bucket
-	tOwner string
-	tName  string
+const (
+	// test content type for the objects
+	tCt = "test/text"
 )
+
+var (
+	tB *Bucket
+)
+
+func tObj() *object.Object {
+	owner := uuid.NewString()
+	name := fmt.Sprintf("obj_name_%s", owner)
+	o := object.New(name, owner)
+	o.SetMeta(object.ContentType, tCt)
+	o.Write([]byte(random.String(10)))
+	return o
+}
 
 func setup() error {
 	opts := badger.DefaultOptions("/tmp/badger")
@@ -25,9 +38,7 @@ func setup() error {
 		return err
 	}
 	tB = b
-	tOwner = uuid.NewString()
-	tName = fmt.Sprintf("obj_name_%s", tOwner)
-	return nil
+	return err
 }
 
 func destroy() error {
@@ -38,14 +49,11 @@ func destroy() error {
 }
 
 func TestMain(t *testing.M) {
-	// setup
 	if err := setup(); err != nil {
 		slog.Error("something went wrong while setting up the test", slog.String("msg", err.Error()))
 		return
 	}
-	// run
 	code := t.Run()
-	// cleanup
 	if err := destroy(); err != nil {
 		slog.Error("something went wrong while setting up the test", slog.String("msg", err.Error()))
 		return
@@ -54,16 +62,14 @@ func TestMain(t *testing.M) {
 }
 
 func TestCreate(t *testing.T) {
-	o := object.New(tName, tOwner)
-	o.SetMeta(object.ContentType, "html/text")
-	if err := tB.Create(o); err != nil {
+	if err := tB.Create(tObj()); err != nil {
 		t.Error(err)
+		return
 	}
 }
 
 func TestGet(t *testing.T) {
-	o := object.New(tName, tOwner)
-	o.SetMeta(object.ContentType, "html/text")
+	o := tObj()
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
@@ -74,11 +80,13 @@ func TestGet(t *testing.T) {
 	if oG.ID != o.ID {
 		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.ID, o.ID)
 	}
+	if !oG.Meta.Has(object.ContentType) {
+		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.Meta.Get(object.ContentType), oG.Meta.Get(object.ContentType))
+	}
 }
 
 func TestDelete(t *testing.T) {
-	o := object.New(tName, tOwner)
-	o.SetMeta(object.ContentType, "html/text")
+	o := tObj()
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
@@ -93,8 +101,7 @@ func TestDelete(t *testing.T) {
 
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		o := object.New(uuid.NewString(), tOwner)
-		o.SetMeta(object.ContentType, "html/text")
+		o := tObj()
 		if err := tB.Create(o); err != nil {
 			b.Error(err)
 		}
