@@ -1,11 +1,9 @@
 package bucket
 
 import (
-	"context"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/naivary/objst/logger"
 	"github.com/naivary/objst/object"
 	"golang.org/x/exp/slog"
 )
@@ -13,8 +11,7 @@ import (
 // Bucket is the actual object storage
 // containing all objects in a flat hierachy.
 type Bucket struct {
-	store  *badger.DB
-	logger *logger.Logger
+	store *badger.DB
 }
 
 func New(opts badger.Options) (*Bucket, error) {
@@ -23,8 +20,7 @@ func New(opts badger.Options) (*Bucket, error) {
 		return nil, err
 	}
 	b := &Bucket{
-		store:  db,
-		logger: logger.New(context.Background()),
+		store: db,
 	}
 	go b.gc()
 	return b, nil
