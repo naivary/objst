@@ -125,11 +125,10 @@ func TestGetByMetasOr(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if len(objs) != 1 {
+	if len(objs) == 0 {
 		t.Fatalf("at least one object should be contained. Got: %d", len(objs))
 	}
 }
-
 func TestNameDuplication(t *testing.T) {
 	o1 := tObj()
 	o2 := tObj()
@@ -141,6 +140,30 @@ func TestNameDuplication(t *testing.T) {
 		return
 	}
 	t.Fatal("should not create objects with the same name.")
+}
+
+func TestGetByMetasAnd(t *testing.T) {
+	o1 := tObj()
+	o1.SetMeta("foo", "bar")
+	o1.SetMeta("bymetasand", "bymetasand")
+	v := url.Values{}
+	v.Set(object.ContentType, tCt)
+	v.Set("foo", "bar")
+	v.Set("bymetasand", "bymetasand")
+	if err := tB.Create(o1); err != nil {
+		t.Error(err)
+		return
+	}
+	objs, err := tB.GetByMetasAnd(v)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(objs) != 1 {
+		t.Fatalf("only one object should be returned. Got: %d", len(objs))
+	}
+
 }
 
 func TestGetByName(t *testing.T) {
