@@ -224,3 +224,16 @@ func (b Bucket) insertName(name, id string) error {
 		return txn.Set([]byte(name), []byte(id))
 	})
 }
+
+func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
+	if b.nameExists(obj.Name()) {
+		return nil, fmt.Errorf("object with the name %s exists", obj.Name())
+	}
+	data, err := obj.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	e := badger.NewEntry([]byte(obj.ID()), data)
+	obj.markAsImmutable()
+	return e, nil
+}
