@@ -131,6 +131,23 @@ func TestImmutability(t *testing.T) {
 	}
 }
 
+func TestImmutabilityAfterGet(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	oG, err := tEnv.b.GetByID(o.id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	_, err = oG.Write(tEnv.payload(5))
+	if !errors.Is(err, ErrObjectIsImmutable) {
+		t.Fatalf("object should be immutable after get")
+	}
+}
+
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := tEnv.b.Create(tEnv.obj()); err != nil {
