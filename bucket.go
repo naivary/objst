@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/google/uuid"
 	"github.com/naivary/objst/random"
 	"golang.org/x/exp/slog"
 )
@@ -197,6 +198,36 @@ func (b Bucket) Delete(id string) error {
 	return b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
+}
+
+func (b Bucket) Shutdown() error {
+	if err := b.store.Close(); err != nil {
+		return err
+	}
+	return b.names.Close()
+}
+
+func (b Bucket) Health() error {
+	owner := uuid.NewString()
+	name := fmt.Sprintf("obj_name_%s", owner)
+	obj := NewObject(name, owner)
+	if _, err := obj.Write([]byte(random.String(5))); err != nil {
+		return err
+	}
+	if err := b.Create(obj); err != nil {
+		return err
+	}
+	_, err := b.GetByID(obj.id)
+	if err != nil {
+		return err
+	}
+	if err := b.Delete(obj.id); err != nil {
+		return err
+	}
+	if err := b.store.DropAll(); err != nil {
+		return err
+	}
+	return b.names.DropAll()
 }
 
 // gc garbace collects every 10 minutes
