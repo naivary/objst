@@ -40,19 +40,11 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 
 func (b Bucket) Create(obj *Object) error {
 	err := b.store.Update(func(txn *badger.Txn) error {
-		if b.nameExists(obj.Name()) {
-			return fmt.Errorf("object with the name %s already exists", obj.Name())
-		}
-		data, err := obj.Marshal()
+		e, err := b.createObjectEntry(obj)
 		if err != nil {
 			return err
 		}
-		e := badger.NewEntry([]byte(obj.ID()), data)
-		if err := txn.SetEntry(e); err != nil {
-			return err
-		}
-		obj.markAsImmutable()
-		return nil
+		return txn.SetEntry(e)
 	})
 	if err != nil {
 		return err
@@ -64,14 +56,10 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 	wb := b.store.NewWriteBatch()
 	defer wb.Cancel()
 	for _, obj := range objs {
-		if b.nameExists(obj.Name()) {
-			return fmt.Errorf("object with the name %s exists", obj.Name())
-		}
-		data, err := obj.Marshal()
+		e, err := b.createObjectEntry(obj)
 		if err != nil {
 			return err
 		}
-		e := badger.NewEntry([]byte(obj.ID()), data)
 		if err := wb.SetEntry(e); err != nil {
 			return err
 		}
