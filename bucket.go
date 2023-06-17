@@ -26,7 +26,7 @@ type Bucket struct {
 func defaultBucketOptions(dataDir string) *badger.Options {
 	opts := badger.DefaultOptions(dataDir)
 	opts.NumVersionsToKeep = 3
-	opts.EncryptionKey = []byte(random.String(30))
+	opts.EncryptionKey = []byte(random.String(32))
 	opts.EncryptionKeyRotationDuration = 24 * time.Hour
 	opts.IndexCacheSize = 100 << 20
 	return &opts

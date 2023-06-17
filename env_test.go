@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/google/uuid"
 	"github.com/naivary/objst/random"
 )
@@ -26,8 +25,7 @@ func newTestEnv() (*testEnv, error) {
 		DataDir:     "/tmp/badger/objst",
 		names:       "/tmp/badger/names",
 	}
-	opts := badger.DefaultOptions(tEnv.DataDir)
-	b, err := NewBucket(&opts)
+	b, err := NewBucket(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +68,9 @@ func (t testEnv) nObj(n int) []*Object {
 
 func (t testEnv) destroy() error {
 	if err := t.b.store.Close(); err != nil {
+		return err
+	}
+	if err := t.b.names.Close(); err != nil {
 		return err
 	}
 	return os.RemoveAll("/tmp/badger")
