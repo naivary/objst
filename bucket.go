@@ -1,4 +1,4 @@
-package bucket
+package main
 
 import (
 	"errors"
@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/naivary/objst/object"
 	"golang.org/x/exp/slog"
 )
 
@@ -18,7 +17,7 @@ type Bucket struct {
 	names *badger.DB
 }
 
-func New(opts badger.Options) (*Bucket, error) {
+func NewBucket(opts badger.Options) (*Bucket, error) {
 	store, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
@@ -35,7 +34,7 @@ func New(opts badger.Options) (*Bucket, error) {
 	return b, nil
 }
 
-func (b Bucket) Create(obj *object.Object) error {
+func (b Bucket) Create(obj *Object) error {
 	err := b.store.Update(func(txn *badger.Txn) error {
 		if b.nameExists(obj.Name) {
 			return fmt.Errorf("object with the name %s already exists", obj.Name)
@@ -53,7 +52,7 @@ func (b Bucket) Create(obj *object.Object) error {
 	return b.insertName(obj.Name, obj.ID)
 }
 
-func (b Bucket) BatchCreate(objs []*object.Object) error {
+func (b Bucket) BatchCreate(objs []*Object) error {
 	wb := b.store.NewWriteBatch()
 	defer wb.Cancel()
 	for _, obj := range objs {
@@ -75,8 +74,8 @@ func (b Bucket) BatchCreate(objs []*object.Object) error {
 	return wb.Flush()
 }
 
-func (b Bucket) GetByID(id string) (*object.Object, error) {
-	var obj object.Object
+func (b Bucket) GetByID(id string) (*Object, error) {
+	var obj Object
 	err := b.store.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(id))
 		if err != nil {
@@ -91,7 +90,7 @@ func (b Bucket) GetByID(id string) (*object.Object, error) {
 	return &obj, err
 }
 
-func (b Bucket) GetByName(name string) (*object.Object, error) {
+func (b Bucket) GetByName(name string) (*Object, error) {
 	var id string
 	err := b.names.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(name))
@@ -113,8 +112,8 @@ func (b Bucket) GetByName(name string) (*object.Object, error) {
 
 // GetByMetasOr gets all objects which include at least
 // one of the metas provided (logical or)
-func (b Bucket) GetByMetasOr(metas url.Values) ([]*object.Object, error) {
-	objs := make([]*object.Object, 0, 10)
+func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
+	objs := make([]*Object, 0, 10)
 	err := b.store.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 10
@@ -123,7 +122,7 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*object.Object, error) {
 
 		for it.Rewind(); it.Valid(); it.Next() {
 			err := it.Item().Value(func(val []byte) error {
-				obj := &object.Object{}
+				obj := &Object{}
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
@@ -144,8 +143,8 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*object.Object, error) {
 	return objs, err
 }
 
-func (b Bucket) GetByMetasAnd(metas url.Values) ([]*object.Object, error) {
-	objs := make([]*object.Object, 0, 10)
+func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
+	objs := make([]*Object, 0, 10)
 	err := b.store.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = 10
@@ -155,7 +154,7 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*object.Object, error) {
 		for it.Rewind(); it.Valid(); it.Next() {
 			err := it.Item().Value(func(val []byte) error {
 				var count int
-				obj := &object.Object{}
+				obj := &Object{}
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
