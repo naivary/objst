@@ -78,12 +78,12 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-func TestGet(t *testing.T) {
+func TestGetByID(t *testing.T) {
 	o := tObj()
 	if err := tB.Create(o); err != nil {
 		t.Error(err)
 	}
-	oG, err := tB.Get(o.ID)
+	oG, err := tB.GetByID(o.ID)
 	if err != nil {
 		t.Error(err)
 	}
@@ -106,7 +106,7 @@ func TestDelete(t *testing.T) {
 	if err := tB.Delete(o.ID); err != nil {
 		t.Error(err)
 	}
-	_, err := tB.Get(o.ID)
+	_, err := tB.GetByID(o.ID)
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
 	}
@@ -130,6 +130,35 @@ func TestGetByMetasOr(t *testing.T) {
 	}
 }
 
+func TestNameDuplication(t *testing.T) {
+	o1 := tObj()
+	o2 := tObj()
+	o1.Name = o2.Name
+	objs := make([]*object.Object, 0, 2)
+	objs = append(objs, o1, o2)
+	if err := tB.BatchCreate(objs); err != nil {
+		t.Log(err)
+		return
+	}
+	t.Fatal("should not create objects with the same name.")
+}
+
+func TestGetByName(t *testing.T) {
+	o1 := tObj()
+	if err := tB.Create(o1); err != nil {
+		t.Error(err)
+		return
+	}
+	oG, err := tB.GetByName(o1.Name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if oG.Name != o1.Name {
+		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.Name, o1.Name)
+	}
+}
+
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := tB.Create(tObj()); err != nil {
@@ -149,7 +178,7 @@ func BenchmarkGet(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := tB.Get(objs[i].ID); err != nil {
+		if _, err := tB.GetByID(objs[i].ID); err != nil {
 			b.Error(err)
 		}
 	}
