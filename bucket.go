@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/naivary/objst/random"
 	"golang.org/x/exp/slog"
 )
 
 const (
-	nameDBDataDir = "/tmp/badger/names"
+	nameDBDataDir  = "/tmp/badger/names"
+	storeDBDataDir = "/tmp/badger/store"
 )
 
 // Bucket is the actual object storage
@@ -21,8 +23,20 @@ type Bucket struct {
 	names *badger.DB
 }
 
-func NewBucket(opts badger.Options) (*Bucket, error) {
-	store, err := badger.Open(opts)
+func defaultBucketOptions(dataDir string) *badger.Options {
+	opts := badger.DefaultOptions(dataDir)
+	opts.NumVersionsToKeep = 3
+	opts.EncryptionKey = []byte(random.String(30))
+	opts.EncryptionKeyRotationDuration = 24 * time.Hour
+	opts.IndexCacheSize = 100 << 20
+	return &opts
+}
+
+func NewBucket(opts *badger.Options) (*Bucket, error) {
+	if opts == nil {
+		opts = defaultBucketOptions(storeDBDataDir)
+	}
+	store, err := badger.Open(*opts)
 	if err != nil {
 		return nil, err
 	}
@@ -213,6 +227,8 @@ func (b Bucket) insertName(name, id string) error {
 	})
 }
 
+// createObjectEntry validates the object and creates a entry.
+// Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 	if b.nameExists(obj.Name()) {
 		return nil, fmt.Errorf("object with the name %s exists", obj.Name())

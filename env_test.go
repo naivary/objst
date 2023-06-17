@@ -26,8 +26,8 @@ func newTestEnv() (*testEnv, error) {
 		DataDir:     "/tmp/badger/objst",
 		names:       "/tmp/badger/names",
 	}
-
-	b, err := NewBucket(badger.DefaultOptions(tEnv.DataDir))
+	opts := badger.DefaultOptions(tEnv.DataDir)
+	b, err := NewBucket(&opts)
 	if err != nil {
 		return nil, err
 	}
