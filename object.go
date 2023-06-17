@@ -130,9 +130,6 @@ func (o Object) isValid() error {
 	return nil
 }
 
-// the default metadata includes:
-// createdAt: Unix Timestamp when the object is created
-// lastModified: Unix Timestamp of the last modification
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
 	o.meta.Add(createdAt, t)
@@ -142,6 +139,12 @@ func (o *Object) setDefaultMetadata() {
 // TODO:(naivary) tmp file for big writes
 func (o *Object) Write(p []byte) (int, error) {
 	return o.pl.Write(p)
+}
+
+func (o *Object) WriteTo(w io.Writer) (int64, error) {
+	buf := bytes.NewBuffer(o.Payload())
+	defer buf.Reset()
+	return buf.WriteTo(w)
 }
 
 func (o *Object) ReadFrom(r io.Reader) (int64, error) {
@@ -157,6 +160,7 @@ func (o *Object) Read(b []byte) (int, error) {
 	return n, nil
 }
 
+// Reset resets the payload
 func (o *Object) Reset() {
 	o.pl.Reset()
 }

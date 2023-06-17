@@ -35,3 +35,16 @@ func TestRead(t *testing.T) {
 		t.Fatalf("payload isn't the same. Got: %s. Expected: %s", string(d), pl)
 	}
 }
+
+func TestWriteTo(t *testing.T) {
+	o1 := tEnv.obj()
+	o2 := tEnv.emptyObj()
+
+	if _, err := o1.WriteTo(o2); err != nil {
+		t.Error(err)
+		return
+	}
+	if !bytes.Equal(o1.Payload(), o2.Payload()) {
+		t.Fatalf("payload should be equal. Got: %s. Expected: %s", o2.Payload(), o1.Payload())
+	}
+}
