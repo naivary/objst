@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/naivary/objst/models"
 )
 
 const (
@@ -20,29 +21,44 @@ const (
 
 type Object struct {
 	// unique identifier
-	ID string
+	id string
 	// unique alias for the object
-	Name  string
-	Owner string
+	name  string
+	owner string
 	// metadata of the object. The naming of the
 	// of the keys follow the golang conventions
 	// (e.g. camelCase).
-	Meta    url.Values
-	Payload []byte
-	pl      *bytes.Buffer
-	pos     int64
+	meta url.Values
+	pl   *bytes.Buffer
+	pos  int64
 }
 
 func New(name, owner string) *Object {
 	o := &Object{
-		ID:    uuid.NewString(),
-		Name:  name,
-		Owner: owner,
-		Meta:  url.Values{},
+		id:    uuid.NewString(),
+		name:  name,
+		owner: owner,
+		meta:  url.Values{},
 		pl:    new(bytes.Buffer),
 	}
 	o.setDefaultMetadata()
 	return o
+}
+
+func (o Object) ID() string {
+	return o.id
+}
+
+func (o Object) Name() string {
+	return o.name
+}
+
+func (o Object) Owner() string {
+	return o.owner
+}
+
+func (o Object) Payload() []byte {
+	return o.pl.Bytes()
 }
 
 // SetMeta will set the given key and
@@ -50,7 +66,25 @@ func New(name, owner string) *Object {
 // writing any key-pair which has been
 // set before.
 func (o *Object) SetMeta(k, v string) {
-	o.Meta.Set(k, v)
+	o.meta.Set(k, v)
+}
+
+func (o *Object) ToModel() *models.Object {
+	return &models.Object{
+		ID:      o.id,
+		Name:    o.name,
+		Owner:   o.owner,
+		Meta:    o.meta,
+		Payload: o.Payload(),
+	}
+}
+
+func (o *Object) fromModel(m *models.Object) {
+	o.id = m.ID
+	o.meta = m.Meta
+	o.owner = m.Owner
+	o.name = m.Name
+	o.pl = bytes.NewBuffer(m.Payload)
 }
 
 func (o *Object) Marshal() ([]byte, error) {
@@ -58,8 +92,7 @@ func (o *Object) Marshal() ([]byte, error) {
 		return nil, err
 	}
 	var buf bytes.Buffer
-	o.Payload = o.pl.Bytes()
-	if err := gob.NewEncoder(&buf).Encode(&o); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(o.ToModel()); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -67,11 +100,16 @@ func (o *Object) Marshal() ([]byte, error) {
 
 func (o *Object) Unmarshal(data []byte) error {
 	r := bytes.NewReader(data)
-	return gob.NewDecoder(r).Decode(&o)
+	m := models.Object{}
+	if err := gob.NewDecoder(r).Decode(&m); err != nil {
+		return err
+	}
+	o.fromModel(&m)
+	return nil
 }
 
 func (o Object) isValid() error {
-	if !o.Meta.Has(ContentType) {
+	if !o.meta.Has(ContentType) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {
@@ -85,8 +123,8 @@ func (o Object) isValid() error {
 // lastModified: Unix Timestamp of the last modification
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
-	o.Meta.Add(createdAt, t)
-	o.Meta.Add(lastModified, t)
+	o.meta.Add(createdAt, t)
+	o.meta.Add(lastModified, t)
 }
 
 // TODO:(naivary) tmp file for big writes
@@ -109,5 +147,4 @@ func (o *Object) Read(b []byte) (int, error) {
 
 func (o *Object) Reset() {
 	o.pl.Reset()
-	o.Payload = o.pl.Bytes()
 }

@@ -21,18 +21,18 @@ func TestGetByID(t *testing.T) {
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 	}
-	oG, err := tEnv.b.GetByID(o.ID)
+	oG, err := tEnv.b.GetByID(o.id)
 	if err != nil {
 		t.Error(err)
 	}
-	if oG.ID != o.ID {
-		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.ID, o.ID)
+	if oG.id != o.id {
+		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.id, o.id)
 	}
-	if !oG.Meta.Has(ContentType) {
-		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.Meta.Get(ContentType), oG.Meta.Get(ContentType))
+	if !oG.meta.Has(ContentType) {
+		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.meta.Get(ContentType), oG.meta.Get(ContentType))
 	}
-	if !bytes.Equal(oG.Payload, o.Payload) {
-		t.Fatalf("payload is not the same. Got: %s. Expected: %s", oG.Payload, o.Payload)
+	if !bytes.Equal(oG.Payload(), o.Payload()) {
+		t.Fatalf("payload is not the same. Got: %s. Expected: %s", oG.Payload(), o.Payload())
 	}
 }
 
@@ -41,10 +41,10 @@ func TestDelete(t *testing.T) {
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 	}
-	if err := tEnv.b.Delete(o.ID); err != nil {
+	if err := tEnv.b.Delete(o.id); err != nil {
 		t.Error(err)
 	}
-	_, err := tEnv.b.GetByID(o.ID)
+	_, err := tEnv.b.GetByID(o.id)
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
 	}
@@ -70,7 +70,7 @@ func TestGetByMetasOr(t *testing.T) {
 func TestNameDuplication(t *testing.T) {
 	o1 := tEnv.obj()
 	o2 := tEnv.obj()
-	o1.Name = o2.Name
+	o1.name = o2.name
 	objs := make([]*Object, 0, 2)
 	objs = append(objs, o1, o2)
 	if err := tEnv.b.BatchCreate(objs); err != nil {
@@ -106,17 +106,19 @@ func TestGetByMetasAnd(t *testing.T) {
 
 func TestGetByName(t *testing.T) {
 	o1 := tEnv.obj()
+	t.Log(o1.name)
 	if err := tEnv.b.Create(o1); err != nil {
 		t.Error(err)
 		return
 	}
-	oG, err := tEnv.b.GetByName(o1.Name)
+	oG, err := tEnv.b.GetByName(o1.name)
+	t.Log(oG.name)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if oG.Name != o1.Name {
-		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.Name, o1.Name)
+	if oG.name != o1.name {
+		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.name, o1.name)
 	}
 }
 
@@ -139,7 +141,7 @@ func BenchmarkGet(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := tEnv.b.GetByID(objs[i].ID); err != nil {
+		if _, err := tEnv.b.GetByID(objs[i].id); err != nil {
 			b.Error(err)
 		}
 	}

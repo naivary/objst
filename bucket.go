@@ -36,38 +36,38 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 
 func (b Bucket) Create(obj *Object) error {
 	err := b.store.Update(func(txn *badger.Txn) error {
-		if b.nameExists(obj.Name) {
-			return fmt.Errorf("object with the name %s already exists", obj.Name)
+		if b.nameExists(obj.Name()) {
+			return fmt.Errorf("object with the name %s already exists", obj.Name())
 		}
 		data, err := obj.Marshal()
 		if err != nil {
 			return err
 		}
-		e := badger.NewEntry([]byte(obj.ID), data)
+		e := badger.NewEntry([]byte(obj.ID()), data)
 		return txn.SetEntry(e)
 	})
 	if err != nil {
 		return err
 	}
-	return b.insertName(obj.Name, obj.ID)
+	return b.insertName(obj.Name(), obj.ID())
 }
 
 func (b Bucket) BatchCreate(objs []*Object) error {
 	wb := b.store.NewWriteBatch()
 	defer wb.Cancel()
 	for _, obj := range objs {
-		if b.nameExists(obj.Name) {
-			return fmt.Errorf("object with the name %s exists", obj.Name)
+		if b.nameExists(obj.Name()) {
+			return fmt.Errorf("object with the name %s exists", obj.Name())
 		}
 		data, err := obj.Marshal()
 		if err != nil {
 			return err
 		}
-		e := badger.NewEntry([]byte(obj.ID), data)
+		e := badger.NewEntry([]byte(obj.ID()), data)
 		if err := wb.SetEntry(e); err != nil {
 			return err
 		}
-		if err := b.insertName(obj.Name, obj.ID); err != nil {
+		if err := b.insertName(obj.Name(), obj.ID()); err != nil {
 			return err
 		}
 	}
@@ -127,7 +127,7 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
 					return err
 				}
 				for k, v := range metas {
-					if obj.Meta.Has(k) && obj.Meta.Get(k) == v[0] {
+					if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
 						objs = append(objs, obj)
 						break
 					}
@@ -159,7 +159,7 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
 					return err
 				}
 				for k, v := range metas {
-					if obj.Meta.Has(k) && obj.Meta.Get(k) == v[0] {
+					if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
 						count++
 						continue
 					}

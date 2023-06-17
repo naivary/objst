@@ -17,12 +17,14 @@ type testEnv struct {
 	b           *Bucket
 	ContentType string
 	DataDir     string
+	names       string
 }
 
 func newTestEnv() (*testEnv, error) {
 	tEnv := testEnv{
 		ContentType: "test/text",
-		DataDir:     "/tmp/badger",
+		DataDir:     "/tmp/badger/objst",
+		names:       "/tmp/badger/names",
 	}
 
 	b, err := NewBucket(badger.DefaultOptions(tEnv.DataDir))
@@ -70,7 +72,7 @@ func (t testEnv) destroy() error {
 	if err := t.b.store.Close(); err != nil {
 		return err
 	}
-	return os.RemoveAll(t.DataDir)
+	return os.RemoveAll("/tmp/badger")
 }
 
 func TestMain(t *testing.M) {
