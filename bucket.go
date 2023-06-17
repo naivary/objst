@@ -211,6 +211,7 @@ func (b Bucket) Health() error {
 	owner := uuid.NewString()
 	name := fmt.Sprintf("obj_name_%s", owner)
 	obj := NewObject(name, owner)
+	obj.SetMeta(ContentType, "text/test")
 	if _, err := obj.Write([]byte(random.String(5))); err != nil {
 		return err
 	}
