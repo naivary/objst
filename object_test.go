@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/naivary/objst/random"
@@ -47,4 +48,34 @@ func TestWriteTo(t *testing.T) {
 	if !bytes.Equal(o1.Payload(), o2.Payload()) {
 		t.Fatalf("payload should be equal. Got: %s. Expected: %s", o2.Payload(), o1.Payload())
 	}
+}
+
+func TestWriteLargeFile(t *testing.T) {
+	o1 := tEnv.emptyObj()
+	image, err := os.ReadFile("./testdata/images/large.jpg")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if _, err := o1.Write(image); err != nil {
+		t.Error(err)
+		return
+	}
+}
+
+func BenchmarkWriteLargeFile(b *testing.B) {
+	image, err := os.ReadFile("./testdata/images/large.jpg")
+	if err != nil {
+		b.Error(err)
+		return
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		o := tEnv.emptyObj()
+		if _, err := o.Write(image); err != nil {
+			b.Error(err)
+			return
+		}
+	}
+	b.ReportAllocs()
 }

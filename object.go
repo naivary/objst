@@ -136,7 +136,6 @@ func (o *Object) setDefaultMetadata() {
 	o.meta.Add(lastModified, t)
 }
 
-// TODO:(naivary) tmp file for big writes
 func (o *Object) Write(p []byte) (int, error) {
 	return o.pl.Write(p)
 }
