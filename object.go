@@ -39,7 +39,7 @@ type Object struct {
 	isMutable bool
 }
 
-func New(name, owner string) *Object {
+func NewObject(name, owner string) *Object {
 	o := &Object{
 		id:        uuid.NewString(),
 		name:      name,
