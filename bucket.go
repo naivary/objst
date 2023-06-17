@@ -32,6 +32,9 @@ func defaultBucketOptions(dataDir string) *badger.Options {
 	return &opts
 }
 
+// NewBucket will create a new object storage with the
+// provided options. If opts is nil default options
+// will be provided.
 func NewBucket(opts *badger.Options) (*Bucket, error) {
 	if opts == nil {
 		opts = defaultBucketOptions(storeDBDataDir)
