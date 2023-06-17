@@ -23,7 +23,8 @@ type Object struct {
 	// unique identifier
 	id string
 	// unique alias for the object
-	name  string
+	name string
+	// owner of the object.
 	owner string
 	// metadata of the object. The naming of the
 	// of the keys follow the golang conventions
@@ -67,6 +68,17 @@ func (o Object) Payload() []byte {
 // set before.
 func (o *Object) SetMeta(k, v string) {
 	o.meta.Set(k, v)
+}
+
+// GetMeta returns the corresponding value of the
+// provided key. The bool is indicating if the value
+// was retrieved successfully.
+func (o *Object) GetMeta(k string) (string, bool) {
+	return o.meta.Get(k), o.meta.Has(k)
+}
+
+func (o *Object) IsMetaExisting(k string) bool {
+	return o.meta.Has(k)
 }
 
 func (o *Object) ToModel() *models.Object {
