@@ -74,7 +74,6 @@ func TestNameDuplication(t *testing.T) {
 	objs := make([]*Object, 0, 2)
 	objs = append(objs, o1, o2)
 	if err := tEnv.b.BatchCreate(objs); err != nil {
-		t.Log(err)
 		return
 	}
 	t.Fatal("should not create objects with the same name.")
@@ -106,19 +105,29 @@ func TestGetByMetasAnd(t *testing.T) {
 
 func TestGetByName(t *testing.T) {
 	o1 := tEnv.obj()
-	t.Log(o1.name)
 	if err := tEnv.b.Create(o1); err != nil {
 		t.Error(err)
 		return
 	}
 	oG, err := tEnv.b.GetByName(o1.name)
-	t.Log(oG.name)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	if oG.name != o1.name {
 		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.name, o1.name)
+	}
+}
+
+func TestImmutability(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	_, err := o.Write(tEnv.payload(10))
+	if !errors.Is(err, ErrObjectIsImmutable) {
+		t.Fatalf("object should not be mutable")
 	}
 }
 

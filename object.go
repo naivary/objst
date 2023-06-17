@@ -32,15 +32,21 @@ type Object struct {
 	meta url.Values
 	pl   *bytes.Buffer
 	pos  int64
+	// isMutable indicated if the object
+	// can be mutated. An object is only mutable
+	// if it isn't already inserted into the store
+	// or wasn't retrieved from the store.
+	isMutable bool
 }
 
 func New(name, owner string) *Object {
 	o := &Object{
-		id:    uuid.NewString(),
-		name:  name,
-		owner: owner,
-		meta:  url.Values{},
-		pl:    new(bytes.Buffer),
+		id:        uuid.NewString(),
+		name:      name,
+		owner:     owner,
+		meta:      url.Values{},
+		pl:        new(bytes.Buffer),
+		isMutable: true,
 	}
 	o.setDefaultMetadata()
 	return o
@@ -91,12 +97,13 @@ func (o *Object) ToModel() *models.Object {
 	}
 }
 
-func (o *Object) fromModel(m *models.Object) {
+func (o *Object) FromModel(m *models.Object) {
 	o.id = m.ID
 	o.meta = m.Meta
 	o.owner = m.Owner
 	o.name = m.Name
 	o.pl = bytes.NewBuffer(m.Payload)
+	o.isMutable = false
 }
 
 func (o *Object) Marshal() ([]byte, error) {
@@ -116,7 +123,7 @@ func (o *Object) Unmarshal(data []byte) error {
 	if err := gob.NewDecoder(r).Decode(&m); err != nil {
 		return err
 	}
-	o.fromModel(&m)
+	o.FromModel(&m)
 	return nil
 }
 
@@ -136,7 +143,14 @@ func (o *Object) setDefaultMetadata() {
 	o.meta.Add(lastModified, t)
 }
 
+// Write will write the data iff the object is mutable.
+// Otherwise an ErrObjectIsImmutable will be returned.
+// An object is mutable if it isn't inserted into the
+// store or retrieved from the store.
 func (o *Object) Write(p []byte) (int, error) {
+	if !o.isMutable {
+		return 0, ErrObjectIsImmutable
+	}
 	return o.pl.Write(p)
 }
 
@@ -162,4 +176,8 @@ func (o *Object) Read(b []byte) (int, error) {
 // Reset resets the payload
 func (o *Object) Reset() {
 	o.pl.Reset()
+}
+
+func (o *Object) markAsImmutable() {
+	o.isMutable = false
 }

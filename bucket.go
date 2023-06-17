@@ -10,6 +10,10 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const (
+	nameDBDataDir = "/tmp/badger/names"
+)
+
 // Bucket is the actual object storage
 // containing all objects in a flat hierachy.
 type Bucket struct {
@@ -22,7 +26,7 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	names, err := badger.Open(badger.DefaultOptions("/tmp/badger/names"))
+	names, err := badger.Open(badger.DefaultOptions(nameDBDataDir))
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +48,11 @@ func (b Bucket) Create(obj *Object) error {
 			return err
 		}
 		e := badger.NewEntry([]byte(obj.ID()), data)
-		return txn.SetEntry(e)
+		if err := txn.SetEntry(e); err != nil {
+			return err
+		}
+		obj.markAsImmutable()
+		return nil
 	})
 	if err != nil {
 		return err
@@ -70,6 +78,7 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 		if err := b.insertName(obj.Name(), obj.ID()); err != nil {
 			return err
 		}
+		obj.markAsImmutable()
 	}
 	return wb.Flush()
 }
