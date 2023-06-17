@@ -1,14 +1,12 @@
 package bucket
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/url"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/ristretto/z"
 	"github.com/naivary/objst/object"
 	"golang.org/x/exp/slog"
 )
@@ -180,39 +178,6 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*object.Object, error) {
 		return nil
 	})
 	return objs, err
-}
-
-func (b Bucket) GetByMetasOrStream(metas url.Values) ([]*object.Object, error) {
-	objs := make([]*object.Object, 0, 10)
-	stream := b.store.NewStream()
-	stream.NumGo = 16
-	stream.ChooseKey = func(item *badger.Item) bool {
-		var isChoosen bool
-		err := item.Value(func(val []byte) error {
-			obj := &object.Object{}
-			if err := obj.Unmarshal(val); err != nil {
-				return err
-			}
-			for k, v := range metas {
-				if obj.Meta.Has(k) && obj.Meta.Get(k) == v[0] {
-					isChoosen = true
-					return nil
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return false
-		}
-		return isChoosen
-	}
-	stream.Send = func(buf *z.Buffer) error {
-		return nil
-	}
-	if err := stream.Orchestrate(context.Background()); err != nil {
-		return nil, err
-	}
-	return objs, nil
 }
 
 func (b Bucket) Delete(id string) error {

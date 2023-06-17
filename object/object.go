@@ -54,7 +54,7 @@ func (o *Object) SetMeta(k, v string) {
 }
 
 func (o *Object) Marshal() ([]byte, error) {
-	if err := o.IsValid(); err != nil {
+	if err := o.isValid(); err != nil {
 		return nil, err
 	}
 	var buf bytes.Buffer
@@ -70,7 +70,7 @@ func (o *Object) Unmarshal(data []byte) error {
 	return gob.NewDecoder(r).Decode(&o)
 }
 
-func (o Object) IsValid() error {
+func (o Object) isValid() error {
 	if !o.Meta.Has(ContentType) {
 		return ErrContentTypeNotExist
 	}
@@ -105,4 +105,9 @@ func (o *Object) Read(b []byte) (int, error) {
 	}
 	o.pos += int64(n)
 	return n, nil
+}
+
+func (o *Object) Reset() {
+	o.pl.Reset()
+	o.Payload = o.pl.Bytes()
 }

@@ -182,25 +182,6 @@ func TestGetByName(t *testing.T) {
 	}
 }
 
-func TestGetByMetasOrStream(t *testing.T) {
-	o := tObj()
-	if err := tB.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-	v := url.Values{}
-	v.Set(object.ContentType, tCt)
-	objs, err := tB.GetByMetasOrStream(v)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) == 0 {
-		t.Fatalf("at least one object should be contained. Got: %d", len(objs))
-	}
-
-}
-
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := tB.Create(tObj()); err != nil {
