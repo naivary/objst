@@ -36,13 +36,29 @@ func TestGetByID(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteByID(t *testing.T) {
 	o := tEnv.obj()
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 	}
-	if err := tEnv.b.Delete(o.id); err != nil {
+	if err := tEnv.b.DeleteByID(o.id); err != nil {
 		t.Error(err)
+	}
+	_, err := tEnv.b.GetByID(o.id)
+	if !errors.Is(err, badger.ErrKeyNotFound) {
+		t.Fatalf("Key should be not found.")
+	}
+}
+
+func TestDeleteByName(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := tEnv.b.DeleteByName(o.name); err != nil {
+		t.Error(err)
+		return
 	}
 	_, err := tEnv.b.GetByID(o.id)
 	if !errors.Is(err, badger.ErrKeyNotFound) {

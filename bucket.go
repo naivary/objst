@@ -24,22 +24,9 @@ type Bucket struct {
 	names *badger.DB
 }
 
-func defaultBucketOptions(dataDir string) *badger.Options {
-	opts := badger.DefaultOptions(dataDir)
-	opts.NumVersionsToKeep = 3
-	opts.EncryptionKey = []byte(random.String(32))
-	opts.EncryptionKeyRotationDuration = 24 * time.Hour
-	opts.IndexCacheSize = 100 << 20
-	return &opts
-}
-
 // NewBucket will create a new object storage with the
-// provided options. If opts is nil default options
-// will be provided.
+// provided options. 
 func NewBucket(opts *badger.Options) (*Bucket, error) {
-	if opts == nil {
-		opts = defaultBucketOptions(storeDBDataDir)
-	}
 	store, err := badger.Open(*opts)
 	if err != nil {
 		return nil, err
@@ -194,10 +181,27 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
 	return objs, err
 }
 
-func (b Bucket) Delete(id string) error {
+func (b Bucket) DeleteByID(id string) error {
 	return b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
+}
+
+func (b Bucket) DeleteByName(name string) error {
+	var id string
+	b.names.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(name))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		id = string(dst)
+		return nil
+	})
+	return b.DeleteByID(id)
 }
 
 func (b Bucket) Shutdown() error {
@@ -222,7 +226,7 @@ func (b Bucket) Health() error {
 	if err != nil {
 		return err
 	}
-	if err := b.Delete(obj.id); err != nil {
+	if err := b.DeleteByID(obj.id); err != nil {
 		return err
 	}
 	if err := b.store.DropAll(); err != nil {

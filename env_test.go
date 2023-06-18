@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dgraph-io/badger/v4"
 	"github.com/google/uuid"
 	"github.com/naivary/objst/random"
 )
@@ -25,7 +26,8 @@ func newTestEnv() (*testEnv, error) {
 		DataDir:     "/tmp/badger/objst",
 		names:       "/tmp/badger/names",
 	}
-	b, err := NewBucket(nil)
+	opts := badger.DefaultOptions(tEnv.DataDir)
+	b, err := NewBucket(&opts)
 	if err != nil {
 		return nil, err
 	}
