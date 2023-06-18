@@ -24,8 +24,7 @@ type Bucket struct {
 	names *badger.DB
 }
 
-// NewBucket will create a new object storage with the
-// provided options. 
+// NewBucket will create a new object storage with the provided options.
 func NewBucket(opts *badger.Options) (*Bucket, error) {
 	store, err := badger.Open(*opts)
 	if err != nil {
@@ -115,10 +114,11 @@ func (b Bucket) GetByName(name string) (*Object, error) {
 // GetByMetasOr gets all objects which include at least
 // one of the metas provided (logical or)
 func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
-	objs := make([]*Object, 0, 10)
+	const prefetchSize = 10
+	objs := make([]*Object, 0, prefetchSize)
 	err := b.store.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
+		opts.PrefetchSize = prefetchSize
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
@@ -146,10 +146,11 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
 }
 
 func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
-	objs := make([]*Object, 0, 10)
+	const prefetchSize = 10
+	objs := make([]*Object, 0, prefetchSize)
 	err := b.store.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = 10
+		opts.PrefetchSize = prefetchSize
 		it := txn.NewIterator(opts)
 		defer it.Close()
 
