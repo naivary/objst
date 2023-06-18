@@ -180,6 +180,74 @@ func TestImmutabilityAfterGet(t *testing.T) {
 	}
 }
 
+func TestIsNotAuthorizedByID(t *testing.T) {
+	o := tEnv.obj()
+	owner := tEnv.owner()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+
+	ok, err := tEnv.b.IsAuthorizedByID(owner, o.id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if ok {
+		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
+	}
+}
+
+func TestIsNotAuthorizedByName(t *testing.T) {
+	o := tEnv.obj()
+	owner := tEnv.owner()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+
+	ok, err := tEnv.b.IsAuthorizedByName(owner, o.name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if ok {
+		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
+	}
+}
+
+func TestShouldBeAuthorizedByID(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	ok, err := tEnv.b.IsAuthorizedByID(o.owner, o.id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !ok {
+		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
+	}
+}
+
+func TestShouldBeAuthorizedByName(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	ok, err := tEnv.b.IsAuthorizedByName(o.owner, o.name)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !ok {
+		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
+	}
+}
+
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := tEnv.b.Create(tEnv.obj()); err != nil {

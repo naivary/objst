@@ -240,6 +240,22 @@ func (b Bucket) Health() error {
 	return b.names.DropAll()
 }
 
+func (b Bucket) IsAuthorizedByName(owner string, name string) (bool, error) {
+	obj, err := b.GetByName(name)
+	if err != nil {
+		return false, err
+	}
+	return obj.owner == owner, nil
+}
+
+func (b Bucket) IsAuthorizedByID(owner string, id string) (bool, error) {
+	obj, err := b.GetByID(id)
+	if err != nil {
+		return false, err
+	}
+	return obj.owner == owner, nil
+}
+
 // gc garbace collects every 10 minutes
 // the values of the key value store.
 func (b Bucket) gc() {
