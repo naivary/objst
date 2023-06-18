@@ -240,20 +240,26 @@ func (b Bucket) Health() error {
 	return b.names.DropAll()
 }
 
-func (b Bucket) IsAuthorizedByName(owner string, name string) (bool, error) {
+func (b Bucket) IsAuthorizedByName(owner string, name string) (*Object, error) {
 	obj, err := b.GetByName(name)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return obj.owner == owner, nil
+	if obj.owner != owner {
+		return nil, ErrUnauthorized
+	}
+	return obj, nil
 }
 
-func (b Bucket) IsAuthorizedByID(owner string, id string) (bool, error) {
+func (b Bucket) IsAuthorizedByID(owner string, id string) (*Object, error) {
 	obj, err := b.GetByID(id)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return obj.owner == owner, nil
+	if obj.owner != owner {
+		return nil, ErrUnauthorized
+	}
+	return obj, nil
 }
 
 // gc garbace collects every 10 minutes

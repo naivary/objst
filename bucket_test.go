@@ -188,12 +188,8 @@ func TestIsNotAuthorizedByID(t *testing.T) {
 		return
 	}
 
-	ok, err := tEnv.b.IsAuthorizedByID(owner, o.id)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if ok {
+	_, err := tEnv.b.IsAuthorizedByID(owner, o.id)
+	if !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
 	}
 }
@@ -206,12 +202,8 @@ func TestIsNotAuthorizedByName(t *testing.T) {
 		return
 	}
 
-	ok, err := tEnv.b.IsAuthorizedByName(owner, o.name)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if ok {
+	_, err := tEnv.b.IsAuthorizedByName(owner, o.name)
+	if !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
 	}
 }
@@ -222,12 +214,12 @@ func TestShouldBeAuthorizedByID(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	ok, err := tEnv.b.IsAuthorizedByID(o.owner, o.id)
+	_, err := tEnv.b.IsAuthorizedByID(o.owner, o.id)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if !ok {
+	if errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
 	}
 }
@@ -238,12 +230,12 @@ func TestShouldBeAuthorizedByName(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	ok, err := tEnv.b.IsAuthorizedByName(o.owner, o.name)
+	_, err := tEnv.b.IsAuthorizedByName(o.owner, o.name)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if !ok {
+	if errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
 	}
 }
