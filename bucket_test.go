@@ -66,6 +66,22 @@ func TestDeleteByName(t *testing.T) {
 	}
 }
 
+func TestDeleteNameAfterObjDelete(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := tEnv.b.DeleteByID(o.id); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+}
+
 func TestGetByMetasOr(t *testing.T) {
 	o := tEnv.obj()
 	if err := tEnv.b.Create(o); err != nil {

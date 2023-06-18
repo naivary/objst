@@ -183,9 +183,13 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
 }
 
 func (b Bucket) DeleteByID(id string) error {
-	return b.store.Update(func(txn *badger.Txn) error {
+	err := b.store.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
+	if err != nil {
+		return err
+	}
+	return b.deleteName(id)
 }
 
 func (b Bucket) DeleteByName(name string) error {
@@ -264,6 +268,23 @@ func (b Bucket) nameExists(name string) bool {
 func (b Bucket) insertName(name, id string) error {
 	return b.names.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(name), []byte(id))
+	})
+}
+
+func (b Bucket) deleteName(id string) error {
+	return b.names.Update(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			item.Value(func(val []byte) error {
+				if string(val) == id {
+					return txn.Delete(item.Key())
+				}
+				return nil
+			})
+		}
+		return nil
 	})
 }
 
