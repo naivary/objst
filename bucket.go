@@ -111,9 +111,7 @@ func (b Bucket) GetByName(name string) (*Object, error) {
 	return b.GetByID(id)
 }
 
-// GetByMetasOr gets all objects which include at least
-// one of the metas provided (logical or)
-func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
+func (b Bucket) GetByMeta(meta url.Values, act action) ([]*Object, error) {
 	const prefetchSize = 10
 	objs := make([]*Object, 0, prefetchSize)
 	err := b.store.View(func(txn *badger.Txn) error {
@@ -128,40 +126,16 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
-				if b.matchMetaOr(metas, obj) {
-					objs = append(objs, obj)
-					return nil
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	return objs, err
-}
-
-func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
-	const prefetchSize = 10
-	objs := make([]*Object, 0, prefetchSize)
-	err := b.store.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = prefetchSize
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				obj := &Object{}
-				if err := obj.Unmarshal(val); err != nil {
-					return err
-				}
-
-				if b.matchMetaAnd(metas, obj) {
-					objs = append(objs, obj)
-					return nil
+				if act == Or {
+					if b.matchMetaOr(meta, obj) {
+						objs = append(objs, obj)
+						return nil
+					}
+				} else if act == And {
+					if b.matchMetaAnd(meta, obj) {
+						objs = append(objs, obj)
+						return nil
+					}
 				}
 				return nil
 			})

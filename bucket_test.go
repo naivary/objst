@@ -90,7 +90,7 @@ func TestGetByMetasOr(t *testing.T) {
 	}
 	v := url.Values{}
 	v.Set(ContentType, tEnv.ContentType)
-	objs, err := tEnv.b.GetByMetasOr(v)
+	objs, err := tEnv.b.GetByMeta(v, Or)
 	if err != nil {
 		t.Error(err)
 		return
@@ -123,7 +123,8 @@ func TestGetByMetasAnd(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	objs, err := tEnv.b.GetByMetasAnd(v)
+	objs, err := tEnv.b.GetByMeta(v, And)
+	t.Log(objs)
 	if err != nil {
 		t.Error(err)
 		return
