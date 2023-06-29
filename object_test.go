@@ -64,6 +64,38 @@ func TestWriteLargeFile(t *testing.T) {
 	}
 }
 
+func TestFilterByMeta(t *testing.T) {
+	owner := tEnv.owner()
+	tObjs := tEnv.nObj(7)
+	tObjs[0].SetMeta("invalid", "true")
+	tObjs[0].SetMeta("foo", "bar")
+	tObjs[1].SetMeta("invalid", "true")
+	for _, obj := range tObjs {
+		obj.owner = owner
+	}
+	if err := tEnv.b.BatchCreate(tObjs); err != nil {
+		t.Error(err)
+		return
+	}
+	objs, err := tEnv.b.GetByOwner(owner)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	m := url.Values{}
+	m.Set("invalid", "true")
+	gotOr := tEnv.b.FilterByMeta(objs, m, Or)
+	if len(gotOr) != 2 {
+		t.Fatalf("Exptected %d objects but got %d", 2, len(gotOr))
+		return
+	}
+	m.Set("foo", "bar")
+	gotAnd := tEnv.b.FilterByMeta(objs, m, And)
+	if len(gotAnd) != 1 {
+		t.Fatalf("Expected %d object but got %d", 1, len(gotAnd))
+	}
+}
+
 func TestRunQuery(t *testing.T) {
 	owner := tEnv.owner()
 	tObjs := tEnv.nObj(7)
