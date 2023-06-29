@@ -262,6 +262,29 @@ func (b Bucket) IsAuthorizedByID(owner string, id string) (*Object, error) {
 	return obj, nil
 }
 
+func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
+	if !q.isValid() {
+		return nil, ErrInvalidQuery
+	}
+
+	if q.meta == nil {
+		return b.GetByOwner(q.owner)
+	}
+
+	if q.act == Or {
+		objs, err := b.GetByOwner(q.owner)
+		if err != nil {
+			return nil, err
+		}
+
+	}
+
+	if q.owner {
+		objs, err := b.GetByOwner()
+	}
+	return objs, nil
+}
+
 // gc garbace collects every 10 minutes
 // the values of the key value store.
 func (b Bucket) gc() {
@@ -323,4 +346,48 @@ func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 	e := badger.NewEntry([]byte(obj.ID()), data)
 	obj.markAsImmutable()
 	return e, nil
+}
+
+// GetByOwner returns all the objects which the owner created
+func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
+	const prefetchSize = 10
+	objs := make([]*Object, 0, prefetchSize)
+	err := b.store.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = prefetchSize
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			err := it.Item().Value(func(val []byte) error {
+				obj := &Object{}
+				if err := obj.Unmarshal(val); err != nil {
+					return err
+				}
+				if obj.owner == owner {
+					objs = append(objs, obj)
+					return nil
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return objs, err
+}
+
+func (b Bucket) FilterByMeta(objs []*Object, meta url.Values, act action) ([]*Object, error) {
+	objsRes := make([]*Object, 0, len(objs))
+	return objsRes, nil
+}
+
+func (b Bucket) matchMetaOr(metas url.Values, obj *Object) bool {
+	return true
+}
+
+func (b Bucket) matchMetaAnd() bool {
+	return true
 }
