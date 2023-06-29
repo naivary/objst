@@ -46,5 +46,5 @@ func (q *Query) WithAction(act action) *Query {
 }
 
 func (q Query) isValid() bool {
-	return q.owner == ""
+	return q.owner != ""
 }

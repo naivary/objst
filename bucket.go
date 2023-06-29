@@ -128,11 +128,9 @@ func (b Bucket) GetByMetasOr(metas url.Values) ([]*Object, error) {
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
-				for k, v := range metas {
-					if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
-						objs = append(objs, obj)
-						break
-					}
+				if b.matchMetaOr(metas, obj) {
+					objs = append(objs, obj)
+					return nil
 				}
 				return nil
 			})
@@ -156,20 +154,14 @@ func (b Bucket) GetByMetasAnd(metas url.Values) ([]*Object, error) {
 
 		for it.Rewind(); it.Valid(); it.Next() {
 			err := it.Item().Value(func(val []byte) error {
-				var count int
 				obj := &Object{}
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
-				for k, v := range metas {
-					if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
-						count++
-						continue
-					}
-					break
-				}
-				if len(metas) == count {
+
+				if b.matchMetaAnd(metas, obj) {
 					objs = append(objs, obj)
+					return nil
 				}
 				return nil
 			})
@@ -271,18 +263,11 @@ func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
 		return b.GetByOwner(q.owner)
 	}
 
-	if q.act == Or {
-		objs, err := b.GetByOwner(q.owner)
-		if err != nil {
-			return nil, err
-		}
-
+	objs, err := b.GetByOwner(q.owner)
+	if err != nil {
+		return nil, err
 	}
-
-	if q.owner {
-		objs, err := b.GetByOwner()
-	}
-	return objs, nil
+	return b.FilterByMeta(objs, q.meta, q.act), nil
 }
 
 // gc garbace collects every 10 minutes
@@ -379,15 +364,39 @@ func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 	return objs, err
 }
 
-func (b Bucket) FilterByMeta(objs []*Object, meta url.Values, act action) ([]*Object, error) {
-	objsRes := make([]*Object, 0, len(objs))
-	return objsRes, nil
+func (b Bucket) FilterByMeta(objs []*Object, metas url.Values, act action) []*Object {
+	res := make([]*Object, 0, len(objs))
+	if act == Or {
+		for _, obj := range objs {
+			if b.matchMetaOr(metas, obj) {
+				res = append(res, obj)
+			}
+		}
+	}
+	if act == And {
+		for _, obj := range objs {
+			if b.matchMetaAnd(metas, obj) {
+				res = append(res, obj)
+			}
+		}
+	}
+	return res
 }
 
 func (b Bucket) matchMetaOr(metas url.Values, obj *Object) bool {
-	return true
+	for k, v := range metas {
+		if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
+			return true
+		}
+	}
+	return false
 }
 
-func (b Bucket) matchMetaAnd() bool {
+func (b Bucket) matchMetaAnd(metas url.Values, obj *Object) bool {
+	for k, v := range metas {
+		if !(obj.meta.Has(k) && obj.meta.Get(k) == v[0]) {
+			return false
+		}
+	}
 	return true
 }
