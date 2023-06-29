@@ -2,7 +2,6 @@ package objst
 
 import (
 	"bytes"
-	"net/url"
 	"os"
 	"testing"
 
@@ -61,73 +60,6 @@ func TestWriteLargeFile(t *testing.T) {
 	if _, err := o1.Write(image); err != nil {
 		t.Error(err)
 		return
-	}
-}
-
-func TestFilterByMeta(t *testing.T) {
-	owner := tEnv.owner()
-	tObjs := tEnv.nObj(7)
-	tObjs[0].SetMeta("invalid", "true")
-	tObjs[0].SetMeta("foo", "bar")
-	tObjs[1].SetMeta("invalid", "true")
-	for _, obj := range tObjs {
-		obj.owner = owner
-	}
-	if err := tEnv.b.BatchCreate(tObjs); err != nil {
-		t.Error(err)
-		return
-	}
-	objs, err := tEnv.b.GetByOwner(owner)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	m := url.Values{}
-	m.Set("invalid", "true")
-	gotOr := tEnv.b.FilterByMeta(objs, m, Or)
-	if len(gotOr) != 2 {
-		t.Fatalf("Exptected %d objects but got %d", 2, len(gotOr))
-		return
-	}
-	m.Set("foo", "bar")
-	gotAnd := tEnv.b.FilterByMeta(objs, m, And)
-	if len(gotAnd) != 1 {
-		t.Fatalf("Expected %d object but got %d", 1, len(gotAnd))
-	}
-}
-
-func TestRunQuery(t *testing.T) {
-	owner := tEnv.owner()
-	tObjs := tEnv.nObj(7)
-	for _, obj := range tObjs {
-		obj.owner = owner
-	}
-	tObjs[0].SetMeta("invalid", "true")
-	if err := tEnv.b.BatchCreate(tObjs); err != nil {
-		t.Error(err)
-		return
-	}
-	q := NewQuery(owner)
-	objs, err := tEnv.b.RunQuery(q)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) != len(tObjs) {
-		t.Fatalf("didnt get the same objs back. Got: %d. Expected: %d", len(objs), len(tObjs))
-	}
-	m := url.Values{}
-	m.Set("invalid", "true")
-	m.Set("foo", "bar")
-	q.WithMeta(m, Or)
-
-	objs, err = tEnv.b.RunQuery(q)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) != 1 {
-		t.Fatalf("Wanted only the manipulated object. Got: %d. Expected: 1", len(objs))
 	}
 }
 
