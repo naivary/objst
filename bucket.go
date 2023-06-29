@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/google/uuid"
-	"github.com/naivary/objst/random"
 	"golang.org/x/exp/slog"
 )
 
@@ -180,30 +178,6 @@ func (b Bucket) Shutdown() error {
 		return err
 	}
 	return b.names.Close()
-}
-
-func (b Bucket) Health() error {
-	owner := uuid.NewString()
-	name := fmt.Sprintf("obj_name_%s", owner)
-	obj := NewObject(name, owner)
-	obj.SetMeta(ContentType, "text/test")
-	if _, err := obj.Write([]byte(random.String(5))); err != nil {
-		return err
-	}
-	if err := b.Create(obj); err != nil {
-		return err
-	}
-	_, err := b.GetByID(obj.id)
-	if err != nil {
-		return err
-	}
-	if err := b.DeleteByID(obj.id); err != nil {
-		return err
-	}
-	if err := b.store.DropAll(); err != nil {
-		return err
-	}
-	return b.names.DropAll()
 }
 
 func (b Bucket) IsAuthorizedByName(owner string, name string) (*Object, error) {
