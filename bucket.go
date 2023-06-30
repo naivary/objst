@@ -238,7 +238,6 @@ func (b Bucket) nameExists(name, owner string) bool {
 
 func (b Bucket) insertName(name, owner, id string) error {
 	return b.names.Update(func(txn *badger.Txn) error {
-		fmt.Println(b.nameFormat(name, owner))
 		return txn.Set([]byte(b.nameFormat(name, owner)), []byte(id))
 	})
 }
