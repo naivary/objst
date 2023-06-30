@@ -106,6 +106,14 @@ func (o *Object) FromModel(m *models.Object) {
 	o.isMutable = false
 }
 
+func (o *Object) BinaryMarshaler() ([]byte, error) {
+	return o.Marshal()
+}
+
+func (o *Object) BinaryUnmarshaler(data []byte) error {
+	return o.Unmarshal(data)
+}
+
 func (o *Object) Marshal() ([]byte, error) {
 	if err := o.isValid(); err != nil {
 		return nil, err
