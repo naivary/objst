@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	nameDBDataDir  = "/tmp/badger/names"
-	storeDBDataDir = "/tmp/badger/store"
+	nameDBDataDir  = "/tmp/objst/test/names"
+	storeDBDataDir = "/tmp/objst/test/store"
 )
 
 type Bucket struct {

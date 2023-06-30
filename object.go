@@ -20,17 +20,19 @@ const (
 )
 
 type Object struct {
-	// unique identifier
+	// unique object identifier
 	id string
 	// unique alias for the object
 	name string
-	// owner of the object.
+	// owner of the object. Intenally an uuid is used
+	// but it can be every type of unique string identifier.
 	owner string
 	// metadata of the object. The naming of the
 	// of the keys follow the golang conventions
 	// (e.g. camelCase).
 	meta url.Values
-	pl   *bytes.Buffer
+	// payload of the object
+	pl *bytes.Buffer
 	// current reading psotion
 	pos int64
 	// An object is only mutable if it
