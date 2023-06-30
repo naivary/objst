@@ -73,7 +73,23 @@ func (o Object) Payload() []byte {
 // writing any key-pair which has been
 // set before.
 func (o *Object) SetMeta(k, v string) {
+	// dont allow the user to
+	// overwrite default metadata
+	if o.isDefaultMetadata(k) {
+		return
+	}
 	o.meta.Set(k, v)
+}
+
+func (o *Object) isDefaultMetadata(k string) bool {
+	switch k {
+	case lastModifiedMetaKey:
+		return true
+	case createdAtMetaKey:
+		return true
+	default:
+		return false
+	}
 }
 
 // GetMeta returns the corresponding value of the
@@ -83,10 +99,14 @@ func (o *Object) GetMeta(k string) (string, bool) {
 	return o.meta.Get(k), o.meta.Has(k)
 }
 
-func (o *Object) IsMetaExisting(k string) bool {
+// HasMetaKey check if the meta data of the
+// object contains the given key.
+func (o *Object) HasMetaKey(k string) bool {
 	return o.meta.Has(k)
 }
 
+// ToModel returns a object which only
+// contains primitiv value types for serialization.
 func (o *Object) ToModel() *models.Object {
 	return &models.Object{
 		ID:      o.id,
@@ -97,6 +117,7 @@ func (o *Object) ToModel() *models.Object {
 	}
 }
 
+// FromModel creates a Object from the given model
 func (o *Object) FromModel(m *models.Object) {
 	o.id = m.ID
 	o.meta = m.Meta
