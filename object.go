@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	// Content type key to use for meta data.
 	ContentTypeMetaKey  = "contentType"
 	createdAtMetaKey    = "createdAt"
 	lastModifiedMetaKey = "lastModified"
