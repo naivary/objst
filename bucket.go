@@ -44,6 +44,10 @@ func NewBucket(opts *badger.Options) (*Bucket, error) {
 	return b, nil
 }
 
+// Create insers the given object into the object.
+// If you have to create multiple objects use
+// `BatchCreate` which is more performant than
+// multiple calls to Create.
 func (b Bucket) Create(obj *Object) error {
 	err := b.store.Update(func(txn *badger.Txn) error {
 		e, err := b.createObjectEntry(obj)
@@ -58,6 +62,7 @@ func (b Bucket) Create(obj *Object) error {
 	return b.insertName(obj.Name(), obj.Owner(), obj.ID())
 }
 
+// BatchCreate inserts multiple objects in an efficient way.
 func (b Bucket) BatchCreate(objs []*Object) error {
 	wb := b.store.NewWriteBatch()
 	defer wb.Cancel()

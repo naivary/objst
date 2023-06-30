@@ -48,13 +48,13 @@ func (t testEnv) payload(n int) []byte {
 }
 
 func (t testEnv) emptyObj() *Object {
-	o := NewObject(t.name(), t.owner())
+	o, _ := NewObject(t.name(), t.owner())
 	o.SetMeta(ContentTypeMetaKey, t.ContentType)
 	return o
 }
 
 func (t testEnv) obj() *Object {
-	o := NewObject(t.name(), t.owner())
+	o, _ := NewObject(t.name(), t.owner())
 	o.SetMeta(ContentTypeMetaKey, t.ContentType)
 	o.Write(t.payload(10))
 	return o

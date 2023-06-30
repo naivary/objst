@@ -41,7 +41,10 @@ type Object struct {
 	isMutable bool
 }
 
-func NewObject(name, owner string) *Object {
+func NewObject(name, owner string) (*Object, error) {
+	if owner == "" || name == "" {
+		return nil, ErrMustIncludeOwnerAndName
+	}
 	o := &Object{
 		id:        uuid.NewString(),
 		name:      name,
@@ -51,7 +54,7 @@ func NewObject(name, owner string) *Object {
 		isMutable: true,
 	}
 	o.setDefaultMetadata()
-	return o
+	return o, nil
 }
 
 func (o Object) ID() string {
@@ -159,7 +162,7 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) isValid() error {
-	if !o.meta.Has(ContentTypeMetaKey) {
+	if !o.HasMetaKey(ContentTypeMetaKey) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {

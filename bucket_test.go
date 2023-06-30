@@ -279,6 +279,8 @@ func TestRunQuery(t *testing.T) {
 	}
 }
 
+func TestInsertAfterRead(t *testing.T) {}
+
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		if err := tEnv.b.Create(tEnv.obj()); err != nil {
