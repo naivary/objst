@@ -40,7 +40,7 @@ identifiable string. Internal objst uses uuid which is the recommend way to use 
 func main() {
   // create a single object
   obj := objst.NewObject("name", "owner")
-  // every object has to contain a contentType meta data key
+  // every object has to contain a contentType metadata key
   obj.SetMeta(objst.ContentTypeMetaKey, "image/jpeg")
   // every object has to contain some payload
   if _, err := obj.Write([]byte("some random data")); err != nil {
@@ -67,7 +67,7 @@ instead of calling `Create` multiple times has extreme performance benefits.
 
 Retrieve an object which is inserted in the object storage by name or id. Every object which is
 inserted once in the object storage will be marked as immutable. By retrieving an object
-you can only use read Operations upon the retrieved object. Only the meta data of the object can be changed.
+you can only use read Operations upon the retrieved object. Only the metadata of the object can be changed.
 
 ```golang
 
@@ -112,4 +112,44 @@ func main() {
     panic(err)
   }
 }
+```
+
+### Metadata
+
+The power of objst is the usage of metadata. Metadata are key value paris associacted with an object.
+For example `ContentType=image/jpeg`. This allows you to filter by the different key value pairs.
+Internally the metadata is represented by `url.Values{}`. Creating custom metas is as easy as creating a new
+`url.Values{}` struct.
+
+```golang
+func main() {
+  metadata := url.Values{}
+  metadata.Set(objst.ContentTypeMetaKey, "image/jpeg")
+
+  // Get all objects with the key value pair "ContentType=image/jpeg".
+  // objst.Or is the logical association of the metadata. It can eitehr
+  // be objst.Or or objst.And.
+  objs, err := bucket.GetByMeta(metadata, objst.Or)
+  if err != nil {
+    panic(err)
+  }
+
+  // use the objects
+}
+```
+
+You can also filter a given slice of objects by metadata
+
+```golang
+func main() {
+  objs := []*objst.Object{...}
+  metadata := url.Values{}
+  metadata.Set("foo", "bar")
+  metadata.Set("foo", "rab")
+
+  // get all the objects which have
+  // the metadata foo=bar AND foo=rab
+  objs, err := bucket.FilterByMeta(objs, metadata, objst.And)
+}
+
 ```

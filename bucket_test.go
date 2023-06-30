@@ -279,7 +279,27 @@ func TestRunQuery(t *testing.T) {
 	}
 }
 
-func TestInsertAfterRead(t *testing.T) {}
+func TestInsertAfterRead(t *testing.T) {
+	o := tEnv.obj()
+	dst := make([]byte, 5)
+	if _, err := o.Read(dst); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+
+	oG, err := tEnv.b.GetByID(o.id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if !bytes.Equal(o.Payload(), oG.Payload()) {
+		t.Fatalf("the bytes should be equal after read anad retrieval. Got: %s. Expected: %s", oG.Payload(), o.Payload())
+	}
+}
 
 func BenchmarkCreate(b *testing.B) {
 	for i := 0; i < b.N; i++ {
