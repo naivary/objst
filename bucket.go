@@ -330,6 +330,9 @@ func (b Bucket) FilterByMeta(objs []*Object, metas url.Values, act action) []*Ob
 
 func (b Bucket) matchMetaOr(metas url.Values, obj *Object) bool {
 	for k, v := range metas {
+		if len(v) < 1 {
+			continue
+		}
 		if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
 			return true
 		}
@@ -339,6 +342,10 @@ func (b Bucket) matchMetaOr(metas url.Values, obj *Object) bool {
 
 func (b Bucket) matchMetaAnd(metas url.Values, obj *Object) bool {
 	for k, v := range metas {
+		// empty value of a key means it is not fullfilled
+		if len(v) < 1 {
+			return false
+		}
 		if !(obj.meta.Has(k) && obj.meta.Get(k) == v[0]) {
 			return false
 		}
