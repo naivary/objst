@@ -7,7 +7,10 @@ import (
 type action int
 
 const (
+	// localgical Or relationship
 	Or action = iota + 1
+
+	// localgical And relationship
 	And
 )
 

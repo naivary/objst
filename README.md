@@ -127,8 +127,8 @@ func main() {
   metadata.Set(objst.ContentTypeMetaKey, "image/jpeg")
 
   // Get all objects with the key value pair "ContentType=image/jpeg".
-  // objst.Or is the logical association of the metadata. It can eitehr
-  // be objst.Or or objst.And.
+  // objst.Or is the logical association of the metadata. It can
+  // either be objst.Or or objst.And.
   objs, err := bucket.GetByMeta(metadata, objst.Or)
   if err != nil {
     panic(err)
