@@ -14,9 +14,9 @@ import (
 
 const (
 	// Content type key to use for meta data.
-	ContentType  = "contentType"
-	createdAt    = "createdAt"
-	lastModified = "lastModified"
+	ContentTypeMetaKey  = "contentType"
+	createdAtMetaKey    = "createdAt"
+	lastModifiedMetaKey = "lastModified"
 )
 
 type Object struct {
@@ -136,7 +136,7 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) isValid() error {
-	if !o.meta.Has(ContentType) {
+	if !o.meta.Has(ContentTypeMetaKey) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {
@@ -147,8 +147,8 @@ func (o Object) isValid() error {
 
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
-	o.meta.Add(createdAt, t)
-	o.meta.Add(lastModified, t)
+	o.meta.Add(createdAtMetaKey, t)
+	o.meta.Add(lastModifiedMetaKey, t)
 }
 
 // Write will write the data iff the object is mutable.

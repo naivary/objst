@@ -28,8 +28,8 @@ func TestGetByID(t *testing.T) {
 	if oG.id != o.id {
 		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.id, o.id)
 	}
-	if !oG.meta.Has(ContentType) {
-		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.meta.Get(ContentType), oG.meta.Get(ContentType))
+	if !oG.meta.Has(ContentTypeMetaKey) {
+		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.meta.Get(ContentTypeMetaKey), oG.meta.Get(ContentTypeMetaKey))
 	}
 	if !bytes.Equal(oG.Payload(), o.Payload()) {
 		t.Fatalf("payload is not the same. Got: %s. Expected: %s", oG.Payload(), o.Payload())
@@ -89,7 +89,7 @@ func TestGetByMetasOr(t *testing.T) {
 		return
 	}
 	v := url.Values{}
-	v.Set(ContentType, tEnv.ContentType)
+	v.Set(ContentTypeMetaKey, tEnv.ContentType)
 	objs, err := tEnv.b.GetByMeta(v, Or)
 	if err != nil {
 		t.Error(err)
@@ -116,7 +116,7 @@ func TestGetByMetasAnd(t *testing.T) {
 	o1.SetMeta("foo", "bar")
 	o1.SetMeta("bymetasand", "bymetasand")
 	v := url.Values{}
-	v.Set(ContentType, tEnv.ContentType)
+	v.Set(ContentTypeMetaKey, tEnv.ContentType)
 	v.Set("foo", "bar")
 	v.Set("bymetasand", "bymetasand")
 	if err := tEnv.b.Create(o1); err != nil {
