@@ -31,10 +31,10 @@ type Object struct {
 	// (e.g. camelCase).
 	meta url.Values
 	pl   *bytes.Buffer
-	pos  int64
-	// isMutable indicated if the object
-	// can be mutated. An object is only mutable
-	// if it isn't already inserted into the store
+	// current reading psotion
+	pos int64
+	// An object is only mutable if it
+	// isn't already inserted into the store
 	// or wasn't retrieved from the store.
 	isMutable bool
 }
