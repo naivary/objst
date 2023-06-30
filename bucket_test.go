@@ -182,36 +182,6 @@ func TestImmutabilityAfterGet(t *testing.T) {
 	}
 }
 
-func TestIsNotAuthorizedByID(t *testing.T) {
-	o := tEnv.obj()
-	owner := tEnv.owner()
-	if err := tEnv.b.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err := tEnv.b.IsAuthorized(owner, o.id)
-	if !errors.Is(err, ErrUnauthorized) {
-		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
-	}
-}
-
-func TestShouldBeAuthorizedByID(t *testing.T) {
-	o := tEnv.obj()
-	if err := tEnv.b.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-	_, err := tEnv.b.IsAuthorized(o.owner, o.id)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if errors.Is(err, ErrUnauthorized) {
-		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
-	}
-}
-
 func TestFilterByMeta(t *testing.T) {
 	owner := tEnv.owner()
 	tObjs := tEnv.nObj(7)

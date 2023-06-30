@@ -189,17 +189,6 @@ func (b Bucket) Shutdown() error {
 	return b.names.Close()
 }
 
-func (b Bucket) IsAuthorized(owner string, id string) (*Object, error) {
-	obj, err := b.GetByID(id)
-	if err != nil {
-		return nil, err
-	}
-	if obj.owner != owner {
-		return nil, ErrUnauthorized
-	}
-	return obj, nil
-}
-
 func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
 	if !q.isValid() {
 		return nil, ErrInvalidQuery
