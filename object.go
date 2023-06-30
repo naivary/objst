@@ -86,6 +86,10 @@ func (o *Object) SetMeta(k, v string) {
 	o.meta.Set(k, v)
 }
 
+// isDefaultMetadata checks if the given key `k`
+// is a default metadata. `isDefaultMetadata` should
+// always be before a metadata will be set to not overwrite
+// any default metadatas.
 func (o *Object) isDefaultMetadata(k string) bool {
 	switch k {
 	case lastModifiedMetaKey:
