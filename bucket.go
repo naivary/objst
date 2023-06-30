@@ -15,10 +15,14 @@ const (
 	storeDBDataDir = "/tmp/badger/store"
 )
 
-// Bucket is the actual object storage
-// containing all objects in a flat hierachy.
 type Bucket struct {
+	// store persists the objects and the
+	// actual data the client will interact with.
 	store *badger.DB
+	// names is a helper db, storing the different names
+	// of the objects. It assures a quick and easy way to
+	// check if a names exists, without unmarshaling the
+	// objects.
 	names *badger.DB
 }
 
@@ -51,7 +55,7 @@ func (b Bucket) Create(obj *Object) error {
 	if err != nil {
 		return err
 	}
-	return b.insertName(obj.Name(), obj.ID())
+	return b.insertName(obj.Name(), obj.Owner(), obj.ID())
 }
 
 func (b Bucket) BatchCreate(objs []*Object) error {
@@ -65,7 +69,7 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 		if err := wb.SetEntry(e); err != nil {
 			return err
 		}
-		if err := b.insertName(obj.Name(), obj.ID()); err != nil {
+		if err := b.insertName(obj.Name(), obj.Owner(), obj.ID()); err != nil {
 			return err
 		}
 		obj.markAsImmutable()
@@ -89,18 +93,18 @@ func (b Bucket) GetByID(id string) (*Object, error) {
 	return &obj, err
 }
 
-func (b Bucket) GetByName(name string) (*Object, error) {
+func (b Bucket) GetByName(name, owner string) (*Object, error) {
 	var id string
 	err := b.names.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(name))
+		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
 		if err != nil {
 			return err
 		}
-		dst := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(dst); err != nil {
+		data := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(data); err != nil {
 			return err
 		}
-		id = string(dst)
+		id = string(data)
 		return nil
 	})
 	if err != nil {
@@ -156,10 +160,10 @@ func (b Bucket) DeleteByID(id string) error {
 	return b.deleteName(id)
 }
 
-func (b Bucket) DeleteByName(name string) error {
+func (b Bucket) DeleteByName(name, owner string) error {
 	var id string
 	b.names.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(name))
+		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
 		if err != nil {
 			return err
 		}
@@ -180,18 +184,7 @@ func (b Bucket) Shutdown() error {
 	return b.names.Close()
 }
 
-func (b Bucket) IsAuthorizedByName(owner string, name string) (*Object, error) {
-	obj, err := b.GetByName(name)
-	if err != nil {
-		return nil, err
-	}
-	if obj.owner != owner {
-		return nil, ErrUnauthorized
-	}
-	return obj, nil
-}
-
-func (b Bucket) IsAuthorizedByID(owner string, id string) (*Object, error) {
+func (b Bucket) IsAuthorized(owner string, id string) (*Object, error) {
 	obj, err := b.GetByID(id)
 	if err != nil {
 		return nil, err
@@ -235,18 +228,23 @@ func (b Bucket) gc() {
 	}
 }
 
-func (b Bucket) nameExists(name string) bool {
+func (b Bucket) nameExists(name, owner string) bool {
 	err := b.names.View(func(txn *badger.Txn) error {
-		_, err := txn.Get([]byte(name))
+		_, err := txn.Get([]byte(b.nameFormat(name, owner)))
 		return err
 	})
 	return !errors.Is(err, badger.ErrKeyNotFound)
 }
 
-func (b Bucket) insertName(name, id string) error {
+func (b Bucket) insertName(name, owner, id string) error {
 	return b.names.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(name), []byte(id))
+		fmt.Println(b.nameFormat(name, owner))
+		return txn.Set([]byte(b.nameFormat(name, owner)), []byte(id))
 	})
+}
+
+func (b Bucket) nameFormat(name, owner string) string {
+	return fmt.Sprintf("%s_%s", name, owner)
 }
 
 func (b Bucket) deleteName(id string) error {
@@ -269,8 +267,8 @@ func (b Bucket) deleteName(id string) error {
 // createObjectEntry validates the object and creates a entry.
 // Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
-	if b.nameExists(obj.Name()) {
-		return nil, fmt.Errorf("object with the name %s exists", obj.Name())
+	if b.nameExists(obj.name, obj.owner) {
+		return nil, fmt.Errorf("object with the name %s for the owner %s exists", obj.name, obj.owner)
 	}
 	data, err := obj.Marshal()
 	if err != nil {

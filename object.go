@@ -153,8 +153,8 @@ func (o *Object) setDefaultMetadata() {
 
 // Write will write the data iff the object is mutable.
 // Otherwise an ErrObjectIsImmutable will be returned.
-// An object is mutable if it isn't inserted into the
-// store or retrieved from the store.
+// An object is mutable if it isn't inserted or retrieved
+// from the store.
 func (o *Object) Write(p []byte) (int, error) {
 	if !o.isMutable {
 		return 0, ErrObjectIsImmutable

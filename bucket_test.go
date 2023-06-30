@@ -56,7 +56,7 @@ func TestDeleteByName(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err := tEnv.b.DeleteByName(o.name); err != nil {
+	if err := tEnv.b.DeleteByName(o.name, o.owner); err != nil {
 		t.Error(err)
 		return
 	}
@@ -103,6 +103,7 @@ func TestNameDuplication(t *testing.T) {
 	o1 := tEnv.obj()
 	o2 := tEnv.obj()
 	o1.name = o2.name
+	o1.owner = o2.owner
 	objs := make([]*Object, 0, 2)
 	objs = append(objs, o1, o2)
 	if err := tEnv.b.BatchCreate(objs); err != nil {
@@ -142,7 +143,7 @@ func TestGetByName(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	oG, err := tEnv.b.GetByName(o1.name)
+	oG, err := tEnv.b.GetByName(o1.name, o1.owner)
 	if err != nil {
 		t.Error(err)
 		return
@@ -189,21 +190,7 @@ func TestIsNotAuthorizedByID(t *testing.T) {
 		return
 	}
 
-	_, err := tEnv.b.IsAuthorizedByID(owner, o.id)
-	if !errors.Is(err, ErrUnauthorized) {
-		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
-	}
-}
-
-func TestIsNotAuthorizedByName(t *testing.T) {
-	o := tEnv.obj()
-	owner := tEnv.owner()
-	if err := tEnv.b.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-
-	_, err := tEnv.b.IsAuthorizedByName(owner, o.name)
+	_, err := tEnv.b.IsAuthorized(owner, o.id)
 	if !errors.Is(err, ErrUnauthorized) {
 		t.Fatalf("should not be authorized to access the object. Owner: %s. Access Owner: %s", o.owner, owner)
 	}
@@ -215,23 +202,7 @@ func TestShouldBeAuthorizedByID(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	_, err := tEnv.b.IsAuthorizedByID(o.owner, o.id)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if errors.Is(err, ErrUnauthorized) {
-		t.Fatalf("should be authorized to access the object. Owner: %s", o.owner)
-	}
-}
-
-func TestShouldBeAuthorizedByName(t *testing.T) {
-	o := tEnv.obj()
-	if err := tEnv.b.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-	_, err := tEnv.b.IsAuthorizedByName(o.owner, o.name)
+	_, err := tEnv.b.IsAuthorized(o.owner, o.id)
 	if err != nil {
 		t.Error(err)
 		return
