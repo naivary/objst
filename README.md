@@ -3,9 +3,9 @@
 objst is an emmedable object storage written in golang. It is based upon
 BadgerDB, a highly performant key-value store.
 
-## Documentation
+# Documentation
 
-### Create a Bucket
+## Create a Bucket
 
 A bucket is the actual object storage containing all the data. An example can be:
 
