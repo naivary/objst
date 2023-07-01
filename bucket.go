@@ -35,7 +35,6 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 	storeDataDir := filepath.Join(dataDirBasePath, uuid.NewString())
 	opts.Dir = storeDataDir
 	opts.ValueDir = storeDataDir
-	fmt.Println(opts)
 	store, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
