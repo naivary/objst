@@ -31,10 +31,10 @@ type Bucket struct {
 // NewBucket will create a new object storage with the provided options.
 // The `Dir` option will be overwritten by the application to have
 // a gurantee about the data path.
-func NewBucket(opts *badger.Options) (*Bucket, error) {
+func NewBucket(opts badger.Options) (*Bucket, error) {
 	storeDataDir := filepath.Join(dataDirBasePath, uuid.NewString())
 	opts.Dir = storeDataDir
-	store, err := badger.Open(*opts)
+	store, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
 	}
