@@ -4,15 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
-const (
-	nameDBDataDir  = "/tmp/objst/test/names"
-	storeDBDataDir = "/tmp/objst/test/store"
+var (
+	dataDirBasePath = filepath.Join("var", "lib", "objst", "data")
+	nameDirBasePath = filepath.Join("var", "lib", "objst", "name")
 )
 
 type Bucket struct {
@@ -27,12 +29,17 @@ type Bucket struct {
 }
 
 // NewBucket will create a new object storage with the provided options.
+// The `Dir` option will be overwritten by the application to have
+// a gurantee about the data path.
 func NewBucket(opts *badger.Options) (*Bucket, error) {
+	storeDataDir := filepath.Join(dataDirBasePath, uuid.NewString())
+	opts.Dir = storeDataDir
 	store, err := badger.Open(*opts)
 	if err != nil {
 		return nil, err
 	}
-	names, err := badger.Open(badger.DefaultOptions(nameDBDataDir))
+	nameDataDir := filepath.Join(nameDirBasePath, uuid.NewString())
+	names, err := badger.Open(badger.DefaultOptions(nameDataDir))
 	if err != nil {
 		return nil, err
 	}
