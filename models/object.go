@@ -3,9 +3,9 @@ package models
 import "net/url"
 
 type Object struct {
-	ID      string     `json:"id"`
-	Name    string     `json:"name"`
-	Owner   string     `json:"owner"`
-	Meta    url.Values `json:"metadata"`
-	Payload []byte     `json:"payload"`
+	ID      string     `json:"id,omitempty"`
+	Name    string     `json:"name,omitempty"`
+	Owner   string     `json:"owner,omitempty"`
+	Meta    url.Values `json:"metadata,omitempty"`
+	Payload []byte     `json:"payload,omitempty"`
 }
