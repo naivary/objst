@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	dataDirBasePath = filepath.Join("var", "lib", "objst", "data")
-	nameDirBasePath = filepath.Join("var", "lib", "objst", "name")
+	dataDirBasePath = filepath.Join("/var", "lib", "objst", "data")
+	nameDirBasePath = filepath.Join("/var", "lib", "objst", "name")
 )
 
 type Bucket struct {
