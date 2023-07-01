@@ -16,17 +16,13 @@ var tEnv *testEnv
 type testEnv struct {
 	b           *Bucket
 	ContentType string
-	DataDir     string
-	names       string
 }
 
 func newTestEnv() (*testEnv, error) {
 	tEnv := testEnv{
 		ContentType: "test/text",
-		DataDir:     "/tmp/objst/data/test",
-		names:       "/tmp/objst/name/test",
 	}
-	opts := badger.DefaultOptions(tEnv.DataDir)
+	opts := badger.DefaultOptions("")
 	b, err := NewBucket(opts)
 	if err != nil {
 		return nil, err
