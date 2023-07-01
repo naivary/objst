@@ -225,3 +225,9 @@ func (o *Object) Reset() {
 func (o *Object) markAsImmutable() {
 	o.isMutable = false
 }
+
+func FromModel(m *models.Object) *Object {
+	o := Object{}
+	o.FromModel(m)
+	return &o
+}

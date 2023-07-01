@@ -49,8 +49,8 @@ func (h HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
 		return
 	}
-	obj := Object{}
-	obj.FromModel(&m)
+	obj := FromModel(&m)
+	_ = obj
 }
 
 func (h HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {

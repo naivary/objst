@@ -3,6 +3,7 @@ package objst
 import (
 	"fmt"
 	"log"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -15,6 +16,7 @@ var tEnv *testEnv
 
 type testEnv struct {
 	b           *Bucket
+	ts          *httptest.Server
 	ContentType string
 }
 
@@ -28,6 +30,7 @@ func newTestEnv() (*testEnv, error) {
 		return nil, err
 	}
 	tEnv.b = b
+	tEnv.ts = httptest.NewServer(NewHTTPHandler(b))
 	return &tEnv, nil
 }
 
@@ -71,7 +74,11 @@ func (t testEnv) destroy() error {
 	if err := t.b.names.Close(); err != nil {
 		return err
 	}
-	return os.RemoveAll("/tmp/badger")
+	if err := os.RemoveAll("/tmp/badger"); err != nil {
+		return err
+	}
+	t.ts.Close()
+	return nil
 }
 
 func TestMain(t *testing.M) {
