@@ -51,7 +51,7 @@ func TestWriteTo(t *testing.T) {
 	}
 }
 
-func TestInvalidName(t *testing.T) {
+func TestNamePattern(t *testing.T) {
 	o1 := tEnv.obj()
 	o1.name = "invalid#name"
 	if err := o1.isValid(); !errors.Is(err, ErrInvalidNamePattern) {

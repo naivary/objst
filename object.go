@@ -181,6 +181,8 @@ func (o Object) isValid() error {
 
 func (o *Object) setDefaultMetadata() {
 	t := strconv.FormatInt(time.Now().Unix(), 10)
+	// o.SetMeta can't be used here because system defaults cannot
+	// be overwritten using o.SetMeta.
 	o.meta.Add(createdAtMetaKey, t)
 	o.meta.Add(lastModifiedMetaKey, t)
 }
