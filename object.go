@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"io"
 	"net/url"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -165,11 +166,15 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) isValid() error {
+	const namePattern = "^[a-zA-Z0-9_.-]+$"
 	if !o.HasMetaKey(ContentTypeMetaKey) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {
 		return ErrEmptyPayload
+	}
+	if ok, _ := regexp.MatchString(namePattern, o.name); !ok {
+		return ErrInvalidNamePattern
 	}
 	return nil
 }

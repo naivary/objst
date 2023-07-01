@@ -8,6 +8,7 @@ var (
 	ErrEmptyPayload            = errors.New("object doesn't contain any payload")
 	ErrObjectIsImmutable       = errors.New("object is immutable. Create a new object")
 	ErrMustIncludeOwnerAndName = errors.New("object is immutable. Create a new object")
+	ErrInvalidNamePattern      = errors.New("object name must match the following regex pattern: ^[a-zA-Z0-9_.-]+$")
 )
 
 // Bucket errors

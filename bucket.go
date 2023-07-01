@@ -62,7 +62,11 @@ func (b Bucket) Create(obj *Object) error {
 		if err != nil {
 			return err
 		}
-		return txn.SetEntry(e)
+		if err := txn.SetEntry(e); err != nil {
+			return err
+		}
+		obj.markAsImmutable()
+		return nil
 	})
 	if err != nil {
 		return err
@@ -276,7 +280,6 @@ func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 		return nil, err
 	}
 	e := badger.NewEntry([]byte(obj.ID()), data)
-	obj.markAsImmutable()
 	return e, nil
 }
 

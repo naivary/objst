@@ -2,6 +2,7 @@ package objst
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"testing"
 
@@ -47,6 +48,19 @@ func TestWriteTo(t *testing.T) {
 	}
 	if !bytes.Equal(o1.Payload(), o2.Payload()) {
 		t.Fatalf("payload should be equal. Got: %s. Expected: %s", o2.Payload(), o1.Payload())
+	}
+}
+
+func TestInvalidName(t *testing.T) {
+	o1 := tEnv.obj()
+	o1.name = "invalid#name"
+	if err := o1.isValid(); !errors.Is(err, ErrInvalidNamePattern) {
+		t.Fatalf("the name '%s' should not be valid.", o1.name)
+	}
+
+	o1.name = "valid_name"
+	if err := o1.isValid(); err != nil {
+		t.Fatalf("the name %s should be valid.", o1.name)
 	}
 }
 
