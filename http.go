@@ -1,6 +1,7 @@
 package objst
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,19 +13,30 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+type HTTPHandlerOptions struct {
+	maxUploadSize int64
+	formKeyFile   string
+}
+
 type HTTPHandler struct {
 	router chi.Router
 	bucket *Bucket
 	logger *slog.Logger
+	opts   HTTPHandlerOptions
 }
 
 func NewHTTPHandler(b *Bucket) *HTTPHandler {
 	h := HTTPHandler{}
 	r := chi.NewRouter()
 	r.Route("/objst", func(r chi.Router) {
-		r.Get("/{id}", h.read)
+		r.Get("/read/{id}", h.read)
+		r.Get("/{id}", h.get)
 		r.Post("/", h.create)
 		r.Delete("/{id}", h.remove)
+		r.Route("/upload", func(r chi.Router) {
+			r.Use(h.assureContentType)
+			r.Post("/", h.upload)
+		})
 	})
 	h.bucket = b
 	h.router = r
@@ -34,6 +46,57 @@ func NewHTTPHandler(b *Bucket) *HTTPHandler {
 
 func (h HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r)
+}
+
+func (h *HTTPHandler) assureContentType(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		contentType := r.Form.Get("contentType")
+		if contentType == "" {
+			http.Error(w, "missing contentType in request form", http.StatusBadRequest)
+			return
+		}
+		ctx := context.WithValue(r.Context(), ContentTypeMetaKey, contentType)
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (h *HTTPHandler) get(w http.ResponseWriter, r *http.Request) {}
+
+func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(h.opts.maxUploadSize); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	file, header, err := r.FormFile(h.opts.formKeyFile)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	owner, ok := r.Context().Value("owner").(string)
+	if !ok {
+		http.Error(w, "owner in request context is not a string", http.StatusInternalServerError)
+		return
+	}
+	obj, err := NewObject(header.Filename, owner)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if _, err := io.Copy(obj, file); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	contentType := r.Context().Value(ContentTypeMetaKey).(string)
+	obj.SetMeta(ContentTypeMetaKey, contentType)
+	if err := h.bucket.Create(obj); err != nil {
+		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *HTTPHandler) read(w http.ResponseWriter, r *http.Request) {

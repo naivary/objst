@@ -17,7 +17,7 @@ func TestHTTPRead(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	target, err := url.JoinPath(tEnv.ts.URL, route, o.id)
+	target, err := url.JoinPath(tEnv.ts.URL, route, "read", o.id)
 	if err != nil {
 		t.Error(err)
 		return
