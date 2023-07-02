@@ -18,9 +18,11 @@ type HTTPHandler struct {
 func NewHTTPHandler(b *Bucket) *HTTPHandler {
 	h := HTTPHandler{}
 	r := chi.NewRouter()
-	r.Get("/{id}", h.read)
-	r.Post("/", h.create)
-	r.Delete("/{id}", h.remove)
+	r.Route("/objst", func(r chi.Router) {
+		r.Get("/{id}", h.read)
+		r.Post("/", h.create)
+		r.Delete("/{id}", h.remove)
+	})
 	h.bucket = b
 	h.router = r
 	return &h

@@ -9,13 +9,15 @@ import (
 	"testing"
 )
 
+const route = "objst"
+
 func TestHTTPRead(t *testing.T) {
 	o := tEnv.obj()
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 		return
 	}
-	target, err := url.JoinPath(tEnv.ts.URL, o.id)
+	target, err := url.JoinPath(tEnv.ts.URL, route, o.id)
 	if err != nil {
 		t.Error(err)
 		return
@@ -48,7 +50,7 @@ func TestHTTPCreate(t *testing.T) {
 			}
 		}	
 	`
-	target, err := url.JoinPath(tEnv.ts.URL)
+	target, err := url.JoinPath(tEnv.ts.URL, route)
 	if err != nil {
 		t.Error(err)
 		return
