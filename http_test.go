@@ -71,3 +71,31 @@ func TestHTTPCreate(t *testing.T) {
 		t.Fatalf("statuscode is not %d", http.StatusOK)
 	}
 }
+
+func TestHTTPRemove(t *testing.T) {
+	o := tEnv.obj()
+	if err := tEnv.b.Create(o); err != nil {
+		t.Error(err)
+		return
+	}
+	target, err := url.JoinPath(tEnv.ts.URL, route, o.id)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	r, err := http.NewRequest(http.MethodDelete, target, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	res, err := tEnv.ts.Client().Do(r)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusNoContent {
+		t.Fatalf("statuscode was not %d", http.StatusNoContent)
+	}
+}

@@ -5,14 +5,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/naivary/objst/models"
+	"golang.org/x/exp/slog"
 )
 
 type HTTPHandler struct {
 	router chi.Router
 	bucket *Bucket
+	logger *slog.Logger
 }
 
 func NewHTTPHandler(b *Bucket) *HTTPHandler {
@@ -25,6 +28,7 @@ func NewHTTPHandler(b *Bucket) *HTTPHandler {
 	})
 	h.bucket = b
 	h.router = r
+	h.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	return &h
 }
 
@@ -75,6 +79,7 @@ func (h *HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *HTTPHandler) Serve(addr string) error {
