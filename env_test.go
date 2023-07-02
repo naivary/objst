@@ -1,10 +1,15 @@
 package objst
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
@@ -17,6 +22,7 @@ var tEnv *testEnv
 type testEnv struct {
 	b           *Bucket
 	ts          *httptest.Server
+	h           *HTTPHandler
 	ContentType string
 }
 
@@ -33,11 +39,16 @@ func newTestEnv() (*testEnv, error) {
 	}
 	tEnv.b = b
 	h := NewHTTPHandler(b, DefaultHTTPHandlerOptions())
+	tEnv.h = h
 	tEnv.ts = httptest.NewServer(h)
 	return &tEnv, nil
 }
 
 func (t testEnv) owner() string {
+	return uuid.NewString()
+}
+
+func (t testEnv) id() string {
 	return uuid.NewString()
 }
 
@@ -68,6 +79,37 @@ func (t testEnv) nObj(n int) []*Object {
 		objs = append(objs, t.obj())
 	}
 	return objs
+}
+
+func (t testEnv) newUploadRequest(url string, params map[string]string, formKey string, path string) (*http.Request, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	body := new(bytes.Buffer)
+	w := multipart.NewWriter(body)
+	multiFile, err := w.CreateFormFile(formKey, filepath.Base(path))
+	if err != nil {
+		return nil, err
+	}
+	if _, err := io.Copy(multiFile, file); err != nil {
+		return nil, err
+	}
+	for k, v := range params {
+		if err := w.WriteField(k, v); err != nil {
+			return nil, err
+		}
+	}
+	if err := w.Close(); err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	return req, nil
 }
 
 func (t testEnv) destroy() error {
