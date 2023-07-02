@@ -30,34 +30,52 @@ func (h HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r)
 }
 
-func (h HTTPHandler) read(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) read(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	obj, err := h.bucket.GetByID(id)
 	if err != nil {
-		msg := fmt.Sprintf("couldn't get the object with the id %s", id)
+		msg := fmt.Sprintf("something went wrong while getting the object. ID: %s", id)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 	if _, err := io.Copy(w, obj); err != nil {
-		http.Error(w, "something went wrong while straming the data to the client", http.StatusInternalServerError)
+		http.Error(w, "something went wrong while streaming the object", http.StatusInternalServerError)
 		return
 	}
 }
-func (h HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
+
+func (h *HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
 	m := models.Object{}
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
 		return
 	}
-	obj := FromModel(&m)
-	_ = obj
+	obj, err := NewObject(m.Name, m.Owner)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	obj.meta = m.Meta
+	if err := h.bucket.Create(obj); err != nil {
+		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+	if err := json.NewEncoder(w).Encode(&m); err != nil {
+		http.Error(w, "couldn't send the object back", http.StatusInternalServerError)
+		return
+	}
 }
 
-func (h HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.bucket.DeleteByID(id); err != nil {
 		msg := fmt.Sprintf("couldn't delete the object with the id %s", id)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
+}
+
+func (h *HTTPHandler) Serve(addr string) error {
+	return http.ListenAndServe(addr, h.router)
 }

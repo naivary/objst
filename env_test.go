@@ -25,12 +25,15 @@ func newTestEnv() (*testEnv, error) {
 		ContentType: "test/text",
 	}
 	opts := badger.DefaultOptions("")
+	// turn of default loggin of badger
+	opts.Logger = nil
 	b, err := NewBucket(opts)
 	if err != nil {
 		return nil, err
 	}
 	tEnv.b = b
-	tEnv.ts = httptest.NewServer(NewHTTPHandler(b))
+	h := NewHTTPHandler(b)
+	tEnv.ts = httptest.NewServer(h)
 	return &tEnv, nil
 }
 

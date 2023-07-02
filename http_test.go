@@ -1,6 +1,9 @@
 package objst
 
 import (
+	"bytes"
+	"io"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 )
@@ -22,5 +25,12 @@ func TestHTTPRead(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
-	t.Log(res)
+	w := httptest.NewRecorder()
+	if _, err := io.Copy(w, res.Body); err != nil {
+		t.Error(err)
+		return
+	}
+	if !bytes.Equal(w.Body.Bytes(), o.Payload()) {
+		t.Fatalf("Payload is not the same. Got: %s. Expected: %s", w.Body.String(), o.Payload())
+	}
 }
