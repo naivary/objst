@@ -21,9 +21,6 @@ type Query struct {
 	owner string
 }
 
-// NewQuery returns an empty query
-// with some default values.
-// The Query follows the following rules:
 func NewQuery(owner string) *Query {
 	return &Query{
 		meta:  nil,
