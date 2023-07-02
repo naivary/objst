@@ -32,7 +32,7 @@ func newTestEnv() (*testEnv, error) {
 		return nil, err
 	}
 	tEnv.b = b
-	h := NewHTTPHandler(b)
+	h := NewHTTPHandler(b, DefaultHTTPHandlerOptions())
 	tEnv.ts = httptest.NewServer(h)
 	return &tEnv, nil
 }

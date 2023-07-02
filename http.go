@@ -3,6 +3,7 @@ package objst
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,9 +14,26 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const (
+	OwnerCtxKey = "owner"
+)
+
+var (
+	ErrMissingOwner = errors.New("missing owner in the request context")
+)
+
 type HTTPHandlerOptions struct {
-	maxUploadSize int64
-	formKeyFile   string
+	// MaxUploadSize is limiting the size of a file
+	// which can be uploaded using the /objst/upload
+	// endpoint. Default: 32 MB.
+	MaxUploadSize int64
+	// FormKeyFile is the key to access the file
+	// in the multipart form. Default: "file"
+	FormKeyFile string
+	// IsAuthorized is the middleware used to authorize
+	// the incoming request. By default no authorization
+	// checks will be done.
+	IsAuthorized func(http.Handler) http.Handler
 }
 
 type HTTPHandler struct {
@@ -25,15 +43,30 @@ type HTTPHandler struct {
 	opts   HTTPHandlerOptions
 }
 
-func NewHTTPHandler(b *Bucket) *HTTPHandler {
+func DefaultHTTPHandlerOptions() HTTPHandlerOptions {
+	opts := HTTPHandlerOptions{}
+	// ~33 MB
+	opts.MaxUploadSize = 32 << 20
+	opts.FormKeyFile = "file"
+	opts.IsAuthorized = isAuthorized
+	return opts
+}
+
+func NewHTTPHandler(b *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
 	h := HTTPHandler{}
 	r := chi.NewRouter()
+	h.opts = opts
 	r.Route("/objst", func(r chi.Router) {
-		r.Get("/read/{id}", h.read)
-		r.Get("/{id}", h.get)
 		r.Post("/", h.create)
-		r.Delete("/{id}", h.remove)
+		// authorization needed routes
+		r.Route("/", func(r chi.Router) {
+			r.Use(h.opts.IsAuthorized)
+			r.Get("/read/{id}", h.read)
+			r.Get("/{id}", h.get)
+			r.Delete("/{id}", h.remove)
+		})
 		r.Route("/upload", func(r chi.Router) {
+			r.Use(h.assureOwner)
 			r.Use(h.assureContentType)
 			r.Post("/", h.upload)
 		})
@@ -44,8 +77,30 @@ func NewHTTPHandler(b *Bucket) *HTTPHandler {
 	return &h
 }
 
+// isAuthorized is the default authorization checker which allows all traffic
+func isAuthorized(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (h HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r)
+}
+
+func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		owner, ok := r.Context().Value(OwnerCtxKey).(string)
+		if !ok {
+			http.Error(w, "owner in request context is not a string", http.StatusInternalServerError)
+			return
+		}
+		if owner == "" {
+			http.Error(w, ErrMissingOwner.Error(), http.StatusBadRequest)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (h *HTTPHandler) assureContentType(next http.Handler) http.Handler {
@@ -65,23 +120,31 @@ func (h *HTTPHandler) assureContentType(next http.Handler) http.Handler {
 	})
 }
 
-func (h *HTTPHandler) get(w http.ResponseWriter, r *http.Request) {}
-
-func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(h.opts.maxUploadSize); err != nil {
+func (h *HTTPHandler) get(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	obj, err := h.bucket.GetByID(id)
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	file, header, err := r.FormFile(h.opts.formKeyFile)
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
+		http.Error(w, "something went wrong while send the object", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(h.opts.MaxUploadSize); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	file, header, err := r.FormFile(h.opts.FormKeyFile)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	owner, ok := r.Context().Value("owner").(string)
-	if !ok {
-		http.Error(w, "owner in request context is not a string", http.StatusInternalServerError)
-		return
-	}
+	owner := r.Context().Value(OwnerCtxKey).(string)
 	obj, err := NewObject(header.Filename, owner)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
