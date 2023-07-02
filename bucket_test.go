@@ -125,7 +125,6 @@ func TestGetByMetasAnd(t *testing.T) {
 		return
 	}
 	objs, err := tEnv.b.GetByMeta(v, And)
-	t.Log(objs)
 	if err != nil {
 		t.Error(err)
 		return

@@ -126,8 +126,7 @@ func (o *Object) ToModel() *models.Object {
 	}
 }
 
-// FromModel creates a Object from the given model
-func (o *Object) FromModel(m *models.Object) {
+func (o *Object) fromModel(m *models.Object) {
 	o.id = m.ID
 	o.meta = m.Meta
 	o.owner = m.Owner
@@ -161,7 +160,7 @@ func (o *Object) Unmarshal(data []byte) error {
 	if err := gob.NewDecoder(r).Decode(&m); err != nil {
 		return err
 	}
-	o.FromModel(&m)
+	o.fromModel(&m)
 	return nil
 }
 
@@ -226,8 +225,16 @@ func (o *Object) markAsImmutable() {
 	o.isMutable = false
 }
 
-func FromModel(m *models.Object) *Object {
-	o := Object{}
-	o.FromModel(m)
-	return &o
+func FromModel(m *models.Object) (*Object, error) {
+	obj, err := NewObject(m.Name, m.Owner)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := obj.Write(m.Payload); err != nil {
+		return nil, err
+	}
+	for k, v := range m.Meta {
+		obj.SetMeta(k, v[0])
+	}
+	return obj, nil
 }

@@ -50,18 +50,17 @@ func (h *HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
 		return
 	}
-	obj, err := NewObject(m.Name, m.Owner)
+	obj, err := FromModel(&m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	obj.meta = m.Meta
 	if err := h.bucket.Create(obj); err != nil {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
-	if err := json.NewEncoder(w).Encode(&m); err != nil {
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
 		http.Error(w, "couldn't send the object back", http.StatusInternalServerError)
 		return
 	}
