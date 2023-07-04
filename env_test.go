@@ -38,17 +38,12 @@ func newTestEnv() (*testEnv, error) {
 		return nil, err
 	}
 	tEnv.b = b
-	h := NewHTTPHandler(b, DefaultHTTPHandlerOptions())
-	tEnv.h = h
-	tEnv.ts = httptest.NewServer(h)
+	tEnv.h = NewHTTPHandler(b, DefaultHTTPHandlerOptions())
+	tEnv.ts = httptest.NewServer(tEnv.h)
 	return &tEnv, nil
 }
 
 func (t testEnv) owner() string {
-	return uuid.NewString()
-}
-
-func (t testEnv) id() string {
 	return uuid.NewString()
 }
 
@@ -119,7 +114,10 @@ func (t testEnv) destroy() error {
 	if err := t.b.names.Close(); err != nil {
 		return err
 	}
-	if err := os.RemoveAll("/tmp/badger"); err != nil {
+	if err := os.RemoveAll(t.b.names.Opts().ValueDir); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(t.b.store.Opts().ValueDir); err != nil {
 		return err
 	}
 	t.ts.Close()

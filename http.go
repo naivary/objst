@@ -56,7 +56,7 @@ func DefaultHTTPHandlerOptions() HTTPHandlerOptions {
 }
 
 func NewHTTPHandler(b *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
-	h := HTTPHandler{}
+	h := &HTTPHandler{}
 	r := chi.NewRouter()
 	h.opts = opts
 	r.Route("/objst", func(r chi.Router) {
@@ -76,10 +76,10 @@ func NewHTTPHandler(b *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
 	h.bucket = b
 	h.router = r
 	h.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-	return &h
+	return h
 }
 
-// isAuthorized is the default authorization checker which accepts all requests.
+// isAuthorized is the default authorization method which accepts all requests.
 func isAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r)
@@ -87,7 +87,7 @@ func isAuthorized(next http.Handler) http.Handler {
 }
 
 // ServeHTTP implements http.Handler
-func (h HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.Context().Value(CtxKeyOwner))
 	h.router.ServeHTTP(w, r)
 }
@@ -96,7 +96,7 @@ func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		owner, ok := r.Context().Value(CtxKeyOwner).(string)
 		if !ok {
-			http.Error(w, "owner in request context is not a string", http.StatusInternalServerError)
+			http.Error(w, "owner in request context is not a string", http.StatusBadRequest)
 			return
 		}
 		if owner == "" {
@@ -150,6 +150,11 @@ func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
+		http.Error(w, "something went wrong while sending the object model", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *HTTPHandler) read(w http.ResponseWriter, r *http.Request) {
@@ -196,8 +201,4 @@ func (h *HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *HTTPHandler) Serve(addr string) error {
-	return http.ListenAndServe(addr, h.router)
 }

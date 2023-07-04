@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -162,5 +163,43 @@ func TestHTTPUpload(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	t.Log(res)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("statuscode is not %d. Got: %d", http.StatusOK, res.StatusCode)
+	}
+}
+
+func TestCtxInjection(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		value := ctx.Value(CtxKeyOwner)
+		if value == nil {
+			t.Error("Custom context value is missing")
+			return
+		}
+		fmt.Println(value)
+		w.WriteHeader(http.StatusOK)
+	})
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodGet, ts.URL, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	ctx := context.WithValue(req.Context(), CtxKeyOwner, "custom-value")
+	req = req.WithContext(ctx)
+
+	res, err := ts.Client().Do(req)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Error("Wrong status code")
+	}
 }
