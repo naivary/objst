@@ -2,6 +2,7 @@ package objst
 
 import "errors"
 
+// Object errors
 var (
 	ErrContentTypeNotExist     = errors.New("missing content type metadata")
 	ErrEmptyPayload            = errors.New("object doesn't contain any payload")
@@ -10,10 +11,12 @@ var (
 	ErrInvalidNamePattern      = errors.New("object name must match the following regex pattern: ^[a-zA-Z0-9_.-]+$")
 )
 
+// HTTP errors
 var (
-	ErrUnauthorized = errors.New("owner is not authorized to access the object")
+	ErrMissingOwner = errors.New("missing owner in the request context")
 )
 
+// Query errors
 var (
 	ErrInvalidQuery = errors.New("query is invalid. Missing owner")
 )

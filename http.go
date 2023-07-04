@@ -2,13 +2,10 @@ package objst
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/naivary/objst/models"
@@ -19,10 +16,6 @@ type CtxKey string
 
 const (
 	CtxKeyOwner CtxKey = "owner"
-)
-
-var (
-	ErrMissingOwner = errors.New("missing owner in the request context")
 )
 
 type HTTPHandler struct {
@@ -119,13 +112,10 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	contentType := mime.TypeByExtension(filepath.Ext(header.Filename))
-	if contentType == "" {
-		userCt := r.Form.Get(string(MetaKeyContentType))
-		if userCt == "" {
-			http.Error(w, "content type of the file is not an official mime-type and no contentType key could be found in the form", http.StatusBadRequest)
-			return
-		}
+	contentType, err := h.getContentType(header.Filename, r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 	obj.SetMeta(ContentTypeMetaKey, contentType)
 	if err := h.bucket.Create(obj); err != nil {
