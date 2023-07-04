@@ -13,25 +13,23 @@ const (
 type Query struct {
 	meta *Metadata
 	// logical action of the meta datas
-	act   action
-	owner string
+	act action
 }
 
-func NewQuery(owner string) *Query {
+func NewQuery() *Query {
 	return &Query{
-		meta:  nil,
-		act:   Or,
-		owner: owner,
+		meta: nil,
+		act:  Or,
 	}
-}
-
-func (q *Query) WithOwner(owner string) *Query {
-	q.owner = owner
-	return q
 }
 
 func (q *Query) WithMeta(meta *Metadata) *Query {
 	q.meta = meta
+	return q
+}
+
+func (q *Query) WithOwner(owner string) *Query {
+	q.meta.set(MetaKeyOwner, owner)
 	return q
 }
 
@@ -40,6 +38,6 @@ func (q *Query) WithAction(act action) *Query {
 	return q
 }
 
-func (q Query) isValid() bool {
-	return q.owner != ""
+func (q *Query) WithMetaPair(k MetaKey, v string) {
+	q.meta.Set(k, v)
 }

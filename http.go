@@ -83,6 +83,7 @@ func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
 // payload iff any object is found.
 func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	q := NewQuery()
 	obj, err := h.bucket.GetByID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
