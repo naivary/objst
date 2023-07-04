@@ -31,8 +31,11 @@ func NewMetadata() Metadata {
 	}
 }
 
+// Set will insert the given key value pair
+// iff it isn't a systemKey like MetaKeyID or
+// MetaKeyCreatedAt.
 func (m Metadata) Set(k MetaKey, v string) {
-	if slices.Contains(m.systemKeys, k) {
+	if m.isSystemMetaKey(k) {
 		return
 	}
 	m.data[k] = v
@@ -48,6 +51,9 @@ func (m Metadata) Get(k MetaKey) string {
 }
 
 func (m Metadata) Del(k MetaKey) {
+	if m.isSystemMetaKey(k) {
+		return
+	}
 	delete(m.data, k)
 }
 
@@ -57,4 +63,8 @@ func (m Metadata) Encode() string {
 		values.Set(k.String(), v)
 	}
 	return values.Encode()
+}
+
+func (m Metadata) isSystemMetaKey(k MetaKey) bool {
+	return slices.Contains(m.systemKeys, k)
 }
