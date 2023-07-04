@@ -3,7 +3,6 @@ package objst
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"time"
 
@@ -16,6 +15,7 @@ const (
 	basePath = "/var/lib/objst"
 	dataDir  = "data"
 	nameDir  = "name"
+	metaDir  = "meta"
 )
 
 type Bucket struct {
@@ -38,9 +38,9 @@ type Bucket struct {
 // a gurantee about the data path.
 func NewBucket(opts badger.Options) (*Bucket, error) {
 	uniqueBasePath := filepath.Join(basePath, uuid.NewString())
-	storeDataDir := filepath.Join(uniqueBasePath, dataDir)
-	opts.Dir = storeDataDir
-	opts.ValueDir = storeDataDir
+	payloadDataDir := filepath.Join(uniqueBasePath, dataDir)
+	opts.Dir = payloadDataDir
+	opts.ValueDir = payloadDataDir
 	payload, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
@@ -50,9 +50,15 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 	if err != nil {
 		return nil, err
 	}
+	metaDataDir := filepath.Join(uniqueBasePath, metaDir)
+	meta, err := badger.Open(badger.DefaultOptions(metaDataDir))
+	if err != nil {
+		return nil, err
+	}
 	b := &Bucket{
 		payload:        payload,
 		names:          names,
+		meta:           meta,
 		uniqueBasePath: uniqueBasePath,
 	}
 	go b.gc()
@@ -64,7 +70,7 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 // `BatchCreate` which is more performant than
 // multiple calls to Create.
 func (b Bucket) Create(obj *Object) error {
-	err := b.store.Update(func(txn *badger.Txn) error {
+	err := b.payload.Update(func(txn *badger.Txn) error {
 		e, err := b.createObjectEntry(obj)
 		if err != nil {
 			return err
@@ -83,7 +89,7 @@ func (b Bucket) Create(obj *Object) error {
 
 // BatchCreate inserts multiple objects in an efficient way.
 func (b Bucket) BatchCreate(objs []*Object) error {
-	wb := b.store.NewWriteBatch()
+	wb := b.payload.NewWriteBatch()
 	defer wb.Cancel()
 	for _, obj := range objs {
 		e, err := b.createObjectEntry(obj)
@@ -103,7 +109,7 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 
 func (b Bucket) GetByID(id string) (*Object, error) {
 	var obj Object
-	err := b.store.View(func(txn *badger.Txn) error {
+	err := b.payload.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(id))
 		if err != nil {
 			return err
@@ -137,10 +143,10 @@ func (b Bucket) GetByName(name, owner string) (*Object, error) {
 	return b.GetByID(id)
 }
 
-func (b Bucket) GetByMeta(meta url.Values, act action) ([]*Object, error) {
+func (b Bucket) GetByMeta(meta Metadata, act action) ([]*Object, error) {
 	const prefetchSize = 10
 	objs := make([]*Object, 0, prefetchSize)
-	err := b.store.View(func(txn *badger.Txn) error {
+	err := b.meta.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = prefetchSize
 		it := txn.NewIterator(opts)
@@ -175,7 +181,7 @@ func (b Bucket) GetByMeta(meta url.Values, act action) ([]*Object, error) {
 }
 
 func (b Bucket) DeleteByID(id string) error {
-	err := b.store.Update(func(txn *badger.Txn) error {
+	err := b.payload.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
 	if err != nil {
@@ -202,7 +208,10 @@ func (b Bucket) DeleteByName(name, owner string) error {
 }
 
 func (b Bucket) Shutdown() error {
-	if err := b.store.Close(); err != nil {
+	if err := b.payload.Close(); err != nil {
+		return err
+	}
+	if err := b.meta.Close(); err != nil {
 		return err
 	}
 	return b.names.Close()
@@ -221,7 +230,7 @@ func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	return b.FilterByMeta(objs, q.meta, q.act), nil
+	return b.FilterByMeta(objs, *q.meta, q.act), nil
 }
 
 // gc garbace collects every 10 minutes
@@ -229,12 +238,12 @@ func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
 func (b Bucket) gc() {
 	ticker := time.NewTicker(10 * time.Minute)
 	for range ticker.C {
-		if err := b.store.Close(); err != nil {
+		if err := b.meta.Close(); err != nil {
 			slog.Error("something went wrong", slog.String("msg", err.Error()))
 			return
 		}
 		ticker.Stop()
-		if err := b.store.RunValueLogGC(0.7); err != nil {
+		if err := b.meta.RunValueLogGC(0.7); err != nil {
 			slog.Error("something went wrong", slog.String("msg", err.Error()))
 			return
 		}
@@ -279,8 +288,8 @@ func (b Bucket) deleteName(id string) error {
 // createObjectEntry validates the object and creates a entry.
 // Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
-	if b.nameExists(obj.name, obj.owner) {
-		return nil, fmt.Errorf("object with the name %s for the owner %s exists", obj.name, obj.owner)
+	if b.nameExists(obj.Name(), obj.Owner()) {
+		return nil, fmt.Errorf("object with the name %s for the owner %s exists", obj.Name(), obj.Owner())
 	}
 	data, err := obj.Marshal()
 	if err != nil {
@@ -294,7 +303,7 @@ func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 	const prefetchSize = 10
 	objs := make([]*Object, 0, prefetchSize)
-	err := b.store.View(func(txn *badger.Txn) error {
+	err := b.meta.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchSize = prefetchSize
 		it := txn.NewIterator(opts)
@@ -306,7 +315,7 @@ func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 				if err := obj.Unmarshal(val); err != nil {
 					return err
 				}
-				if obj.owner == owner {
+				if obj.Owner() == owner {
 					objs = append(objs, obj)
 					return nil
 				}
@@ -321,18 +330,18 @@ func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 	return objs, err
 }
 
-func (b Bucket) FilterByMeta(objs []*Object, metas url.Values, act action) []*Object {
+func (b Bucket) FilterByMeta(objs []*Object, meta Metadata, act action) []*Object {
 	res := make([]*Object, 0, len(objs))
 	if act == Or {
 		for _, obj := range objs {
-			if b.matchMetaOr(metas, obj) {
+			if b.matchMetaOr(meta, obj) {
 				res = append(res, obj)
 			}
 		}
 	}
 	if act == And {
 		for _, obj := range objs {
-			if b.matchMetaAnd(metas, obj) {
+			if b.matchMetaAnd(meta, obj) {
 				res = append(res, obj)
 			}
 		}
@@ -340,25 +349,18 @@ func (b Bucket) FilterByMeta(objs []*Object, metas url.Values, act action) []*Ob
 	return res
 }
 
-func (b Bucket) matchMetaOr(metas url.Values, obj *Object) bool {
-	for k, v := range metas {
-		if len(v) < 1 {
-			continue
-		}
-		if obj.meta.Has(k) && obj.meta.Get(k) == v[0] {
+func (b Bucket) matchMetaOr(meta Metadata, obj *Object) bool {
+	for k := range meta.data {
+		if obj.HasMetaKey(k) {
 			return true
 		}
 	}
 	return false
 }
 
-func (b Bucket) matchMetaAnd(metas url.Values, obj *Object) bool {
-	for k, v := range metas {
-		// empty value of a key means it is not fullfilled
-		if len(v) < 1 {
-			return false
-		}
-		if !(obj.meta.Has(k) && obj.meta.Get(k) == v[0]) {
+func (b Bucket) matchMetaAnd(meta Metadata, obj *Object) bool {
+	for k := range meta.data {
+		if !obj.HasMetaKey(k) {
 			return false
 		}
 	}

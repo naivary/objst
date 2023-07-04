@@ -17,6 +17,13 @@ const (
 	CtxKeyOwner CtxKey = "owner"
 )
 
+type objectModel struct {
+	ID       string             `json:"id"`
+	Name     string             `json:"name"`
+	Owner    string             `json:"owner"`
+	Metadata map[MetaKey]string `json:"metadata"`
+}
+
 type HTTPHandler struct {
 	bucket *Bucket
 	logger *slog.Logger
@@ -43,7 +50,6 @@ func (h *HTTPHandler) routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(h.opts.IsAuthenticated)
 	r.Route("/objst", func(r chi.Router) {
-		r.Post("/", h.Create)
 		r.Route("/", func(r chi.Router) {
 			r.Use(h.opts.IsAuthorized)
 			r.Get("/read/{id}", h.Read)
@@ -116,7 +122,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	obj.SetMeta(MetaKeyContentType, contentType)
+	obj.SetMetaKey(MetaKeyContentType, contentType)
 	if err := h.bucket.Create(obj); err != nil {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
@@ -138,28 +144,6 @@ func (h *HTTPHandler) Read(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, err := io.Copy(w, obj); err != nil {
 		http.Error(w, "something went wrong while streaming the object", http.StatusInternalServerError)
-		return
-	}
-}
-
-func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
-	m := ObjectModel{}
-	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
-		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
-		return
-	}
-	obj, err := FromModel(&m)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := h.bucket.Create(obj); err != nil {
-		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
-		http.Error(w, "couldn't send the object back", http.StatusInternalServerError)
 		return
 	}
 }

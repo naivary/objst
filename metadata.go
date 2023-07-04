@@ -1,6 +1,8 @@
 package objst
 
 import (
+	"bytes"
+	"encoding/gob"
 	"net/url"
 
 	"golang.org/x/exp/slices"
@@ -28,8 +30,8 @@ type Metadata struct {
 	systemKeys []MetaKey
 }
 
-func NewMetadata() Metadata {
-	return Metadata{
+func NewMetadata() *Metadata {
+	return &Metadata{
 		data:       make(map[MetaKey]string),
 		systemKeys: []MetaKey{MetaKeyID, MetaKeyCreatedAt},
 	}
@@ -40,6 +42,9 @@ func NewMetadata() Metadata {
 // MetaKeyCreatedAt.
 func (m Metadata) Set(k MetaKey, v string) {
 	if m.isSystemMetaKey(k) {
+		return
+	}
+	if v == "" {
 		return
 	}
 	m.data[k] = v
@@ -93,4 +98,10 @@ func (m Metadata) UserDefinedPairs() map[MetaKey]string {
 		}
 	}
 	return res
+}
+
+func (m Metadata) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	err := gob.NewEncoder(&buf).Encode(m.data)
+	return buf.Bytes(), err
 }

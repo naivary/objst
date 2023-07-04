@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/naivary/objst/models"
 )
 
 const route = "objst"
@@ -122,7 +121,7 @@ func TestHTTPGet(t *testing.T) {
 		return
 	}
 	defer res.Body.Close()
-	m := models.Object{}
+	m := objectModel{}
 	if err := json.NewDecoder(res.Body).Decode(&m); err != nil {
 		t.Error(err)
 		return

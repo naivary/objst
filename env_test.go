@@ -57,13 +57,13 @@ func (t testEnv) payload(n int) []byte {
 
 func (t testEnv) emptyObj() *Object {
 	o, _ := NewObject(t.name(), t.owner())
-	o.SetMeta(ContentTypeMetaKey, t.ContentType)
+	o.SetMetaKey(MetaKeyContentType, t.ContentType)
 	return o
 }
 
 func (t testEnv) obj() *Object {
 	o, _ := NewObject(t.name(), t.owner())
-	o.SetMeta(ContentTypeMetaKey, t.ContentType)
+	o.SetMetaKey(MetaKeyContentType, t.ContentType)
 	o.Write(t.payload(10))
 	return o
 }
@@ -108,10 +108,13 @@ func (t testEnv) newUploadRequest(url string, params map[string]string, formKey 
 }
 
 func (t testEnv) destroy() error {
-	if err := t.b.store.Close(); err != nil {
+	if err := t.b.payload.Close(); err != nil {
 		return err
 	}
 	if err := t.b.names.Close(); err != nil {
+		return err
+	}
+	if err := t.b.meta.Close(); err != nil {
 		return err
 	}
 	if err := os.RemoveAll(t.b.uniqueBasePath); err != nil {

@@ -3,7 +3,6 @@ package objst
 import (
 	"bytes"
 	"errors"
-	"net/url"
 	"testing"
 
 	"github.com/dgraph-io/badger/v4"
@@ -21,15 +20,15 @@ func TestGetByID(t *testing.T) {
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 	}
-	oG, err := tEnv.b.GetByID(o.id)
+	oG, err := tEnv.b.GetByID(o.ID())
 	if err != nil {
 		t.Error(err)
 	}
-	if oG.id != o.id {
-		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.id, o.id)
+	if oG.ID() != o.ID() {
+		t.Fatalf("id's aren't the same. Got: %s. Expected: %s", oG.ID(), o.ID())
 	}
-	if !oG.meta.Has(ContentTypeMetaKey) {
-		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.meta.Get(ContentTypeMetaKey), oG.meta.Get(ContentTypeMetaKey))
+	if !oG.HasMetaKey(MetaKeyContentType) {
+		t.Fatalf("object does not have the custom set meta data filed. Expected: %s. Got: %s", o.GetMetaKey(MetaKeyContentType), oG.GetMetaKey(MetaKeyContentType))
 	}
 	if !bytes.Equal(oG.Payload(), o.Payload()) {
 		t.Fatalf("payload is not the same. Got: %s. Expected: %s", oG.Payload(), o.Payload())
@@ -41,10 +40,10 @@ func TestDeleteByID(t *testing.T) {
 	if err := tEnv.b.Create(o); err != nil {
 		t.Error(err)
 	}
-	if err := tEnv.b.DeleteByID(o.id); err != nil {
+	if err := tEnv.b.DeleteByID(o.ID()); err != nil {
 		t.Error(err)
 	}
-	_, err := tEnv.b.GetByID(o.id)
+	_, err := tEnv.b.GetByID(o.ID())
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
 	}
@@ -56,11 +55,11 @@ func TestDeleteByName(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err := tEnv.b.DeleteByName(o.name, o.owner); err != nil {
+	if err := tEnv.b.DeleteByName(o.Name(), o.Owner()); err != nil {
 		t.Error(err)
 		return
 	}
-	_, err := tEnv.b.GetByID(o.id)
+	_, err := tEnv.b.GetByID(o.ID())
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		t.Fatalf("Key should be not found.")
 	}
@@ -72,7 +71,7 @@ func TestDeleteNameAfterObjDelete(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if err := tEnv.b.DeleteByID(o.id); err != nil {
+	if err := tEnv.b.DeleteByID(o.ID()); err != nil {
 		t.Error(err)
 		return
 	}
@@ -88,9 +87,9 @@ func TestGetByMetasOr(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	v := url.Values{}
-	v.Set(ContentTypeMetaKey, tEnv.ContentType)
-	objs, err := tEnv.b.GetByMeta(v, Or)
+	m := NewMetadata()
+	m.Set(MetaKeyContentType, tEnv.ContentType)
+	objs, err := tEnv.b.GetByMeta(*m, Or)
 	if err != nil {
 		t.Error(err)
 		return
@@ -102,8 +101,8 @@ func TestGetByMetasOr(t *testing.T) {
 func TestNameDuplication(t *testing.T) {
 	o1 := tEnv.obj()
 	o2 := tEnv.obj()
-	o1.name = o2.name
-	o1.owner = o2.owner
+	o1.meta.set(MetaKeyName, o2.Name())
+	o1.meta.set(MetaKeyOwner, o2.Owner())
 	objs := make([]*Object, 0, 2)
 	objs = append(objs, o1, o2)
 	if err := tEnv.b.BatchCreate(objs); err != nil {
@@ -114,17 +113,17 @@ func TestNameDuplication(t *testing.T) {
 
 func TestGetByMetasAnd(t *testing.T) {
 	o1 := tEnv.obj()
-	o1.SetMeta("foo", "bar")
-	o1.SetMeta("bymetasand", "bymetasand")
-	v := url.Values{}
-	v.Set(ContentTypeMetaKey, tEnv.ContentType)
-	v.Set("foo", "bar")
-	v.Set("bymetasand", "bymetasand")
+	o1.SetMetaKey("foo", "bar")
+	o1.SetMetaKey("bymetasand", "bymetasand")
+	m := NewMetadata()
+	m.Set(MetaKeyContentType, tEnv.ContentType)
+	m.Set("foo", "bar")
+	m.Set("bymetasand", "bymetasand")
 	if err := tEnv.b.Create(o1); err != nil {
 		t.Error(err)
 		return
 	}
-	objs, err := tEnv.b.GetByMeta(v, And)
+	objs, err := tEnv.b.GetByMeta(*m, And)
 	if err != nil {
 		t.Error(err)
 		return
@@ -142,13 +141,13 @@ func TestGetByName(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	oG, err := tEnv.b.GetByName(o1.name, o1.owner)
+	oG, err := tEnv.b.GetByName(o1.Name(), o1.Owner())
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	if oG.name != o1.name {
-		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.name, o1.name)
+	if oG.Name() != o1.Name() {
+		t.Fatalf("name should be equal. Got: %s. Expected: %s", oG.Name(), o1.Name())
 	}
 }
 
@@ -170,7 +169,7 @@ func TestImmutabilityAfterGet(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	oG, err := tEnv.b.GetByID(o.id)
+	oG, err := tEnv.b.GetByID(o.ID())
 	if err != nil {
 		t.Error(err)
 		return
@@ -184,11 +183,11 @@ func TestImmutabilityAfterGet(t *testing.T) {
 func TestFilterByMeta(t *testing.T) {
 	owner := tEnv.owner()
 	tObjs := tEnv.nObj(7)
-	tObjs[0].SetMeta("invalid", "true")
-	tObjs[0].SetMeta("foo", "bar")
-	tObjs[1].SetMeta("invalid", "true")
+	tObjs[0].SetMetaKey("invalid", "true")
+	tObjs[0].SetMetaKey("foo", "bar")
+	tObjs[1].SetMetaKey("invalid", "true")
 	for _, obj := range tObjs {
-		obj.owner = owner
+		obj.meta.set(MetaKeyOwner, owner)
 	}
 	if err := tEnv.b.BatchCreate(tObjs); err != nil {
 		t.Error(err)
@@ -199,15 +198,15 @@ func TestFilterByMeta(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	m := url.Values{}
+	m := NewMetadata()
 	m.Set("invalid", "true")
-	gotOr := tEnv.b.FilterByMeta(objs, m, Or)
+	gotOr := tEnv.b.FilterByMeta(objs, *m, Or)
 	if len(gotOr) != 2 {
 		t.Fatalf("Exptected %d objects but got %d", 2, len(gotOr))
 		return
 	}
 	m.Set("foo", "bar")
-	gotAnd := tEnv.b.FilterByMeta(objs, m, And)
+	gotAnd := tEnv.b.FilterByMeta(objs, *m, And)
 	if len(gotAnd) != 1 {
 		t.Fatalf("Expected %d object but got %d", 1, len(gotAnd))
 	}
@@ -217,9 +216,9 @@ func TestRunQuery(t *testing.T) {
 	owner := tEnv.owner()
 	tObjs := tEnv.nObj(7)
 	for _, obj := range tObjs {
-		obj.owner = owner
+		obj.meta.set(MetaKeyOwner, owner)
 	}
-	tObjs[0].SetMeta("invalid", "true")
+	tObjs[0].SetMetaKey("invalid", "true")
 	if err := tEnv.b.BatchCreate(tObjs); err != nil {
 		t.Error(err)
 		return
@@ -233,7 +232,7 @@ func TestRunQuery(t *testing.T) {
 	if len(objs) != len(tObjs) {
 		t.Fatalf("didnt get the same objs back. Got: %d. Expected: %d", len(objs), len(tObjs))
 	}
-	m := url.Values{}
+	m := NewMetadata()
 	m.Set("invalid", "true")
 	m.Set("foo", "bar")
 	q.WithMeta(m, Or)
@@ -260,7 +259,7 @@ func TestInsertAfterRead(t *testing.T) {
 		return
 	}
 
-	oG, err := tEnv.b.GetByID(o.id)
+	oG, err := tEnv.b.GetByID(o.ID())
 	if err != nil {
 		t.Error(err)
 		return
@@ -289,7 +288,7 @@ func BenchmarkGet(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := tEnv.b.GetByID(objs[i].id); err != nil {
+		if _, err := tEnv.b.GetByID(objs[i].ID()); err != nil {
 			b.Error(err)
 		}
 	}

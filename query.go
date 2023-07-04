@@ -1,9 +1,5 @@
 package objst
 
-import (
-	"net/url"
-)
-
 type action int
 
 const (
@@ -15,7 +11,7 @@ const (
 )
 
 type Query struct {
-	meta url.Values
+	meta *Metadata
 	// logical action of the meta datas
 	act   action
 	owner string
@@ -34,7 +30,7 @@ func (q *Query) WithOwner(owner string) *Query {
 	return q
 }
 
-func (q *Query) WithMeta(meta url.Values, act action) *Query {
+func (q *Query) WithMeta(meta *Metadata, act action) *Query {
 	q.meta = meta
 	q.act = act
 	return q

@@ -2,20 +2,14 @@ package objst
 
 import (
 	"bytes"
-	"encoding/gob"
 	"io"
 	"regexp"
 
 	"github.com/google/uuid"
 )
 
-type objectModel struct {
-	Payload  []byte
-	Metadata map[MetaKey]string
-}
-
 type Object struct {
-	meta Metadata
+	meta *Metadata
 	// payload of the object
 	pl *bytes.Buffer
 	// current reading psotion
@@ -78,10 +72,6 @@ func (o *Object) HasMetaKey(k MetaKey) bool {
 	return o.meta.Has(k)
 }
 
-func (o *Object) fromModel() error {
-	return nil
-}
-
 func (o *Object) BinaryMarshaler() ([]byte, error) {
 	return o.Marshal()
 }
@@ -91,23 +81,11 @@ func (o *Object) BinaryUnmarshaler(data []byte) error {
 }
 
 func (o *Object) Marshal() ([]byte, error) {
-	if err := o.isValid(); err != nil {
-		return nil, err
-	}
-	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(o.ToModel()); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return o.Payload(), nil
 }
 
 func (o *Object) Unmarshal(data []byte) error {
-	r := bytes.NewReader(data)
-	m := ObjectModel{}
-	if err := gob.NewDecoder(r).Decode(&m); err != nil {
-		return err
-	}
-	o.fromModel(&m)
+	o.pl = bytes.NewBuffer(data)
 	return nil
 }
 
@@ -162,4 +140,13 @@ func (o *Object) Reset() {
 
 func (o *Object) markAsImmutable() {
 	o.isMutable = false
+}
+
+func (o *Object) ToModel() *objectModel {
+	return &objectModel{
+		ID:       o.ID(),
+		Name:     o.Name(),
+		Owner:    o.Owner(),
+		Metadata: o.meta.UserDefinedPairs(),
+	}
 }
