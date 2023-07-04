@@ -87,11 +87,11 @@ func (b Bucket) GetByName(name, owner string) (*Object, error) {
 }
 
 func (b Bucket) Get(q *Query) ([]*Object, error) {
-	ids, err := b.matchedIDs(q)
+	ids, err := b.getMatchingIDs(q)
 	if err != nil {
 		return nil, err
 	}
-	return b.IdsToObjs(ids)
+	return b.idsToObjs(ids)
 }
 
 // Create inserts the given object into the storage.
@@ -100,6 +100,9 @@ func (b Bucket) Get(q *Query) ([]*Object, error) {
 // multiple calls to Create.
 func (b Bucket) Create(obj *Object) error {
 	err := b.payload.Update(func(txn *badger.Txn) error {
+		if err := obj.isValid(); err != nil {
+			return err
+		}
 		e, err := b.createObjectEntry(obj)
 		if err != nil {
 			return err
@@ -143,7 +146,7 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 }
 
 func (b Bucket) Delete(q *Query) error {
-	ids, err := b.matchedIDs(q)
+	ids, err := b.getMatchingIDs(q)
 	if err != nil {
 		return nil
 	}
@@ -155,14 +158,34 @@ func (b Bucket) Delete(q *Query) error {
 	return nil
 }
 
-func (b Bucket) DeleteByID(id string) error {
-	err := b.payload.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(id))
+func (b Bucket) GetMeta(id string) (*Metadata, error) {
+	meta := NewMetadata()
+	err := b.meta.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		return meta.Unmarshal(dst)
 	})
+	return meta, err
+}
+
+func (b Bucket) DeleteByID(id string) error {
+	meta, err := b.GetMeta(id)
 	if err != nil {
 		return err
 	}
-	if err := b.deleteName(id); err != nil {
+	if err := b.deletePayload(id); err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	if err := b.deleteName(meta.Get(MetaKeyName), meta.Get(MetaKeyOwner)); err != nil {
 		return err
 	}
 	return b.deleteMeta(id)
@@ -195,7 +218,7 @@ func (b Bucket) Shutdown() error {
 	return b.names.Close()
 }
 
-func (b Bucket) matchedIDs(q *Query) ([]string, error) {
+func (b Bucket) getMatchingIDs(q *Query) ([]string, error) {
 	const prefetchSize = 10
 	ids := make([]string, 0, prefetchSize)
 	err := b.meta.View(func(txn *badger.Txn) error {
@@ -211,7 +234,9 @@ func (b Bucket) matchedIDs(q *Query) ([]string, error) {
 					return err
 				}
 				if meta.Compare(q.meta, q.act) {
-					ids = append(ids, string(it.Item().Key()))
+					dst := make([]byte, it.Item().KeySize())
+					it.Item().KeyCopy(dst)
+					ids = append(ids, string(dst))
 				}
 				return nil
 			})
@@ -224,7 +249,7 @@ func (b Bucket) matchedIDs(q *Query) ([]string, error) {
 	return ids, err
 }
 
-func (b Bucket) IdsToObjs(ids []string) ([]*Object, error) {
+func (b Bucket) idsToObjs(ids []string) ([]*Object, error) {
 	objs := make([]*Object, 0, len(ids))
 	for _, id := range ids {
 		obj, err := b.composeObjectByID(id)
@@ -236,7 +261,7 @@ func (b Bucket) IdsToObjs(ids []string) ([]*Object, error) {
 	return objs, nil
 }
 
-func (b Bucket) nameExists(name, owner string) bool {
+func (b Bucket) isNameExisting(name, owner string) bool {
 	err := b.names.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(b.nameFormat(name, owner)))
 		return err
@@ -260,25 +285,20 @@ func (b Bucket) insertMeta(id string, meta *Metadata) error {
 	})
 }
 
-func (b Bucket) deleteName(id string) error {
+func (b Bucket) deleteName(name, owner string) error {
 	return b.names.Update(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			item.Value(func(val []byte) error {
-				if string(val) == id {
-					return txn.Delete(item.Key())
-				}
-				return nil
-			})
-		}
-		return nil
+		return txn.Delete([]byte(b.nameFormat(name, owner)))
 	})
 }
 
 func (b Bucket) deleteMeta(id string) error {
 	return b.meta.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(id))
+	})
+}
+
+func (b Bucket) deletePayload(id string) error {
+	return b.payload.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
 	})
 }
@@ -293,7 +313,7 @@ func (b Bucket) nameFormat(name, owner string) string {
 // createObjectEntry validates the object and creates a entry.
 // Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
-	if b.nameExists(obj.Name(), obj.Owner()) {
+	if b.isNameExisting(obj.Name(), obj.Owner()) {
 		return nil, fmt.Errorf("object with the name %s for the owner %s exists", obj.Name(), obj.Owner())
 	}
 	data, err := obj.Marshal()
@@ -324,20 +344,9 @@ func (b Bucket) composeObject(meta *Metadata) (*Object, error) {
 }
 
 func (b Bucket) composeObjectByID(id string) (*Object, error) {
-	m := NewMetadata()
-	err := b.meta.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(id))
-		if err != nil {
-			return err
-		}
-		dst := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(dst); err != nil {
-			return err
-		}
-		return m.Unmarshal(dst)
-	})
+	meta, err := b.GetMeta(id)
 	if err != nil {
 		return nil, err
 	}
-	return b.composeObject(m)
+	return b.composeObject(meta)
 }

@@ -84,6 +84,8 @@ func TestDeleteNameAfterObjDelete(t *testing.T) {
 func TestNameDuplication(t *testing.T) {
 	o1 := tEnv.obj()
 	o2 := tEnv.obj()
+	o2.meta.set(MetaKeyName, "something/with/a/path.jpg")
+
 	o1.meta.set(MetaKeyName, o2.Name())
 	o1.meta.set(MetaKeyOwner, o2.Owner())
 	objs := make([]*Object, 0, 2)
@@ -158,6 +160,37 @@ func TestInsertAfterRead(t *testing.T) {
 	}
 	if !bytes.Equal(o.Payload(), oG.Payload()) {
 		t.Fatalf("the bytes should be equal after read anad retrieval. Got: %s. Expected: %s", oG.Payload(), o.Payload())
+	}
+}
+
+func TestQuery(t *testing.T) {
+	const (
+		limit int     = 10
+		foo   MetaKey = "foo"
+		bar   string  = "bar"
+	)
+	objs := tEnv.nObj(20)
+	for i := 0; i < len(objs); i++ {
+		objs[i].SetMetaKey(foo, bar)
+		if i == limit {
+			break
+		}
+	}
+	for _, obj := range objs {
+		if err := tEnv.b.Create(obj); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	q := NewQuery().WithMetaPair(foo, bar)
+	fetchedObjs, err := tEnv.b.Get(q)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(fetchedObjs) != limit+1 {
+		t.Fatalf("not the right number fetched. Got: %d. Expected: %d", len(fetchedObjs), limit+1)
 	}
 }
 

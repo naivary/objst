@@ -48,7 +48,7 @@ func (t testEnv) owner() string {
 }
 
 func (t testEnv) name() string {
-	return fmt.Sprintf("obj_name_%s", t.owner())
+	return fmt.Sprintf("obj_name_%s.test", t.owner())
 }
 
 func (t testEnv) payload(n int) []byte {

@@ -18,14 +18,9 @@ type Query struct {
 
 func NewQuery() *Query {
 	return &Query{
-		meta: nil,
+		meta: NewMetadata(),
 		act:  Or,
 	}
-}
-
-func (q *Query) WithMeta(meta *Metadata) *Query {
-	q.meta = meta
-	return q
 }
 
 func (q *Query) WithOwner(owner string) *Query {
@@ -40,15 +35,5 @@ func (q *Query) WithAction(act action) *Query {
 
 func (q *Query) WithMetaPair(k MetaKey, v string) *Query {
 	q.meta.Set(k, v)
-	return q
-}
-
-func (q *Query) WithID(id string) *Query {
-	q.meta.set(MetaKeyID, id)
-	return q
-}
-
-func (q *Query) WithName(name string) *Query {
-	q.meta.set(MetaKeyName, name)
 	return q
 }
