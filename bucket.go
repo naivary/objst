@@ -12,9 +12,10 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var (
-	dataDirBasePath = filepath.Join("/var", "lib", "objst", "data")
-	nameDirBasePath = filepath.Join("/var", "lib", "objst", "name")
+const (
+	basePath = "/var/lib/objst"
+	dataDir  = "data"
+	nameDir  = "name"
 )
 
 type Bucket struct {
@@ -26,27 +27,31 @@ type Bucket struct {
 	// check if a names exists, without unmarshaling the
 	// objects.
 	names *badger.DB
+
+	uniqueBasePath string
 }
 
 // NewBucket will create a new object storage with the provided options.
 // The `Dir` option will be overwritten by the application to have
 // a gurantee about the data path.
 func NewBucket(opts badger.Options) (*Bucket, error) {
-	storeDataDir := filepath.Join(dataDirBasePath, uuid.NewString())
+	uniqueBasePath := filepath.Join(basePath, uuid.NewString())
+	storeDataDir := filepath.Join(uniqueBasePath, dataDir)
 	opts.Dir = storeDataDir
 	opts.ValueDir = storeDataDir
 	store, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
 	}
-	nameDataDir := filepath.Join(nameDirBasePath, uuid.NewString())
+	nameDataDir := filepath.Join(uniqueBasePath, nameDir)
 	names, err := badger.Open(badger.DefaultOptions(nameDataDir))
 	if err != nil {
 		return nil, err
 	}
 	b := &Bucket{
-		store: store,
-		names: names,
+		store:          store,
+		names:          names,
+		uniqueBasePath: uniqueBasePath,
 	}
 	go b.gc()
 	return b, nil

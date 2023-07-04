@@ -114,10 +114,7 @@ func (t testEnv) destroy() error {
 	if err := t.b.names.Close(); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(t.b.names.Opts().ValueDir); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(t.b.store.Opts().ValueDir); err != nil {
+	if err := os.RemoveAll(t.b.uniqueBasePath); err != nil {
 		return err
 	}
 	t.ts.Close()
