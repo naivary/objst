@@ -21,12 +21,14 @@ const (
 type Bucket struct {
 	// store persists the objects and the
 	// actual data the client will interact with.
-	store *badger.DB
+	payload *badger.DB
 	// names is a helper db, storing the different names
 	// of the objects. It assures a quick and easy way to
 	// check if a names exists, without unmarshaling the
 	// objects.
 	names *badger.DB
+
+	meta *badger.DB
 
 	uniqueBasePath string
 }
@@ -39,7 +41,7 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 	storeDataDir := filepath.Join(uniqueBasePath, dataDir)
 	opts.Dir = storeDataDir
 	opts.ValueDir = storeDataDir
-	store, err := badger.Open(opts)
+	payload, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +51,7 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 		return nil, err
 	}
 	b := &Bucket{
-		store:          store,
+		payload:        payload,
 		names:          names,
 		uniqueBasePath: uniqueBasePath,
 	}

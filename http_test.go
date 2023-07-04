@@ -22,7 +22,7 @@ func TestHTTPRead(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	target, err := url.JoinPath(tEnv.ts.URL, route, "read", o.id)
+	target, err := url.JoinPath(tEnv.ts.URL, route, "read", o.ID())
 	if err != nil {
 		t.Error(err)
 		return
@@ -83,7 +83,7 @@ func TestHTTPRemove(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	target, err := url.JoinPath(tEnv.ts.URL, route, o.id)
+	target, err := url.JoinPath(tEnv.ts.URL, route, o.ID())
 	if err != nil {
 		t.Error(err)
 		return
@@ -111,7 +111,7 @@ func TestHTTPGet(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	target, err := url.JoinPath(tEnv.ts.URL, route, o.id)
+	target, err := url.JoinPath(tEnv.ts.URL, route, o.ID())
 	if err != nil {
 		t.Error(err)
 		return

@@ -4,33 +4,18 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
-	"net/url"
 	"regexp"
-	"strconv"
-	"time"
 
 	"github.com/google/uuid"
-	"github.com/naivary/objst/models"
 )
 
-const (
-	ContentTypeMetaKey  = "contentType"
-	createdAtMetaKey    = "createdAt"
-	lastModifiedMetaKey = "lastModified"
-)
+type objectModel struct {
+	Payload  []byte
+	Metadata map[MetaKey]string
+}
 
 type Object struct {
-	// unique object identifier
-	id string
-	// unique alias for the object
-	name string
-	// owner of the object. Intenally an uuid is used
-	// but it can be every type of unique string identifier.
-	owner string
-	// metadata of the object. The naming of the
-	// of the keys follow the golang conventions
-	// (e.g. camelCase).
-	meta url.Values
+	meta Metadata
 	// payload of the object
 	pl *bytes.Buffer
 	// current reading psotion
@@ -46,27 +31,26 @@ func NewObject(name, owner string) (*Object, error) {
 		return nil, ErrMustIncludeOwnerAndName
 	}
 	o := &Object{
-		id:        uuid.NewString(),
-		name:      name,
-		owner:     owner,
-		meta:      url.Values{},
+		meta:      NewMetadata(),
 		pl:        new(bytes.Buffer),
 		isMutable: true,
 	}
-	o.setDefaultMetadata()
+	o.meta.set(MetaKeyID, uuid.NewString())
+	o.meta.set(MetaKeyName, name)
+	o.meta.set(MetaKeyOwner, owner)
 	return o, nil
 }
 
 func (o Object) ID() string {
-	return o.id
+	return o.meta.Get(MetaKeyID)
 }
 
 func (o Object) Name() string {
-	return o.name
+	return o.meta.Get(MetaKeyName)
 }
 
 func (o Object) Owner() string {
-	return o.owner
+	return o.meta.Get(MetaKeyOwner)
 }
 
 func (o Object) Payload() []byte {
@@ -77,62 +61,25 @@ func (o Object) Payload() []byte {
 // value as a meta data key-pair, over-
 // writing any key-pair which has been
 // set before.
-func (o *Object) SetMeta(k, v string) {
-	// dont allow the user to
-	// overwrite default metadata
-	if o.isDefaultMetadata(k) {
-		return
-	}
+func (o *Object) SetMetaKey(k MetaKey, v string) {
 	o.meta.Set(k, v)
-}
-
-// isDefaultMetadata checks if the given key `k`
-// is a default metadata. `isDefaultMetadata` should
-// always be before a metadata will be set to not overwrite
-// any default metadatas.
-func (o *Object) isDefaultMetadata(k string) bool {
-	switch k {
-	case lastModifiedMetaKey:
-		return true
-	case createdAtMetaKey:
-		return true
-	default:
-		return false
-	}
 }
 
 // GetMeta returns the corresponding value of the
 // provided key. The bool is indicating if the value
 // was retrieved successfully.
-func (o *Object) GetMeta(k string) (string, bool) {
-	return o.meta.Get(k), o.meta.Has(k)
+func (o *Object) GetMetaKey(k MetaKey) string {
+	return o.meta.Get(k)
 }
 
 // HasMetaKey check if the meta data of the
 // object contains the given key.
-func (o *Object) HasMetaKey(k string) bool {
+func (o *Object) HasMetaKey(k MetaKey) bool {
 	return o.meta.Has(k)
 }
 
-// ToModel returns a object which only
-// contains primitiv value types for serialization.
-func (o *Object) ToModel() *models.Object {
-	return &models.Object{
-		ID:      o.id,
-		Name:    o.name,
-		Owner:   o.owner,
-		Meta:    o.meta,
-		Payload: o.Payload(),
-	}
-}
-
-func (o *Object) fromModel(m *models.Object) {
-	o.id = m.ID
-	o.meta = m.Meta
-	o.owner = m.Owner
-	o.name = m.Name
-	o.pl = bytes.NewBuffer(m.Payload)
-	o.isMutable = false
+func (o *Object) fromModel() error {
+	return nil
 }
 
 func (o *Object) BinaryMarshaler() ([]byte, error) {
@@ -156,7 +103,7 @@ func (o *Object) Marshal() ([]byte, error) {
 
 func (o *Object) Unmarshal(data []byte) error {
 	r := bytes.NewReader(data)
-	m := models.Object{}
+	m := ObjectModel{}
 	if err := gob.NewDecoder(r).Decode(&m); err != nil {
 		return err
 	}
@@ -165,25 +112,17 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) isValid() error {
-	const namePattern = "^[a-zA-Z0-9_.-]+$"
-	if !o.HasMetaKey(ContentTypeMetaKey) {
+	const namePattern = "^[a-zA-Z0-9_.-/]+$"
+	if !o.HasMetaKey(MetaKeyContentType) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {
 		return ErrEmptyPayload
 	}
-	if ok, _ := regexp.MatchString(namePattern, o.name); !ok {
+	if ok, _ := regexp.MatchString(namePattern, o.Name()); !ok {
 		return ErrInvalidNamePattern
 	}
 	return nil
-}
-
-func (o *Object) setDefaultMetadata() {
-	t := strconv.FormatInt(time.Now().Unix(), 10)
-	// o.SetMeta can't be used here because system defaults cannot
-	// be overwritten using o.SetMeta.
-	o.meta.Add(createdAtMetaKey, t)
-	o.meta.Add(lastModifiedMetaKey, t)
 }
 
 // Write will write the data iff the object is mutable.
@@ -223,18 +162,4 @@ func (o *Object) Reset() {
 
 func (o *Object) markAsImmutable() {
 	o.isMutable = false
-}
-
-func FromModel(m *models.Object) (*Object, error) {
-	obj, err := NewObject(m.Name, m.Owner)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := obj.Write(m.Payload); err != nil {
-		return nil, err
-	}
-	for k, v := range m.Meta {
-		obj.SetMeta(k, v[0])
-	}
-	return obj, nil
 }

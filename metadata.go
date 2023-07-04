@@ -13,6 +13,7 @@ const (
 	MetaKeyContentType MetaKey = "contentType"
 	MetaKeyName        MetaKey = "name"
 	MetaKeyID          MetaKey = "id"
+	MetaKeyOwner       MetaKey = "owner"
 )
 
 func (m MetaKey) String() string {
@@ -68,6 +69,28 @@ func (m Metadata) Encode() string {
 	return values.Encode()
 }
 
+func (m Metadata) Merge(mp map[MetaKey]string) {
+	for k, v := range mp {
+		m.Set(k, v)
+	}
+}
+
 func (m Metadata) isSystemMetaKey(k MetaKey) bool {
 	return slices.Contains(m.systemKeys, k)
+}
+
+// set is intended for internal usage where
+// SystemMetaKeys can be set
+func (m Metadata) set(k MetaKey, v string) {
+	m.data[k] = v
+}
+
+func (m Metadata) UserDefinedPairs() map[MetaKey]string {
+	res := make(map[MetaKey]string)
+	for k, v := range m.data {
+		if !m.isSystemMetaKey(k) {
+			res[k] = v
+		}
+	}
+	return res
 }

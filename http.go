@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/naivary/objst/models"
 	"golang.org/x/exp/slog"
 )
 
@@ -117,7 +116,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	obj.SetMeta(ContentTypeMetaKey, contentType)
+	obj.SetMeta(MetaKeyContentType, contentType)
 	if err := h.bucket.Create(obj); err != nil {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
@@ -144,7 +143,7 @@ func (h *HTTPHandler) Read(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
-	m := models.Object{}
+	m := ObjectModel{}
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
 		return
