@@ -30,9 +30,8 @@ func (q *Query) WithOwner(owner string) *Query {
 	return q
 }
 
-func (q *Query) WithMeta(meta *Metadata, act action) *Query {
+func (q *Query) WithMeta(meta *Metadata) *Query {
 	q.meta = meta
-	q.act = act
 	return q
 }
 

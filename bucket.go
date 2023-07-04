@@ -4,11 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/google/uuid"
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -61,11 +59,14 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 		meta:           meta,
 		uniqueBasePath: uniqueBasePath,
 	}
-	go b.gc()
 	return b, nil
 }
 
-// Create insers the given object into the object.
+func (b Bucket) Get(q Query) ([]*Object, error) {
+	return nil, nil
+}
+
+// Create inserts the given object into the storage.
 // If you have to create multiple objects use
 // `BatchCreate` which is more performant than
 // multiple calls to Create.
@@ -84,7 +85,10 @@ func (b Bucket) Create(obj *Object) error {
 	if err != nil {
 		return err
 	}
-	return b.insertName(obj.Name(), obj.Owner(), obj.ID())
+	if err := b.insertName(obj.Name(), obj.Owner(), obj.ID()); err != nil {
+		return err
+	}
+	return b.insertMeta(obj.ID(), obj.meta)
 }
 
 // BatchCreate inserts multiple objects in an efficient way.
@@ -102,25 +106,16 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 		if err := b.insertName(obj.Name(), obj.Owner(), obj.ID()); err != nil {
 			return err
 		}
+		if err := b.insertMeta(obj.ID(), obj.meta); err != nil {
+			return err
+		}
 		obj.markAsImmutable()
 	}
 	return wb.Flush()
 }
 
 func (b Bucket) GetByID(id string) (*Object, error) {
-	var obj Object
-	err := b.payload.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(id))
-		if err != nil {
-			return err
-		}
-		data := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(data); err != nil {
-			return err
-		}
-		return obj.Unmarshal(data)
-	})
-	return &obj, err
+	return b.composeObjectByID(id)
 }
 
 func (b Bucket) GetByName(name, owner string) (*Object, error) {
@@ -141,6 +136,10 @@ func (b Bucket) GetByName(name, owner string) (*Object, error) {
 		return nil, err
 	}
 	return b.GetByID(id)
+}
+
+func Get(meta Metadata, act action, limit int) ([]*Object, error) {
+	return nil, nil
 }
 
 func (b Bucket) GetByMeta(meta Metadata, act action) ([]*Object, error) {
@@ -187,7 +186,10 @@ func (b Bucket) DeleteByID(id string) error {
 	if err != nil {
 		return err
 	}
-	return b.deleteName(id)
+	if err := b.deleteName(id); err != nil {
+		return err
+	}
+	return b.deleteMeta(id)
 }
 
 func (b Bucket) DeleteByName(name, owner string) error {
@@ -233,23 +235,6 @@ func (b Bucket) RunQuery(q *Query) ([]*Object, error) {
 	return b.FilterByMeta(objs, *q.meta, q.act), nil
 }
 
-// gc garbace collects every 10 minutes
-// the values of the key value store.
-func (b Bucket) gc() {
-	ticker := time.NewTicker(10 * time.Minute)
-	for range ticker.C {
-		if err := b.meta.Close(); err != nil {
-			slog.Error("something went wrong", slog.String("msg", err.Error()))
-			return
-		}
-		ticker.Stop()
-		if err := b.meta.RunValueLogGC(0.7); err != nil {
-			slog.Error("something went wrong", slog.String("msg", err.Error()))
-			return
-		}
-	}
-}
-
 func (b Bucket) nameExists(name, owner string) bool {
 	err := b.names.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(b.nameFormat(name, owner)))
@@ -264,8 +249,14 @@ func (b Bucket) insertName(name, owner, id string) error {
 	})
 }
 
-func (b Bucket) nameFormat(name, owner string) string {
-	return fmt.Sprintf("%s_%s", name, owner)
+func (b Bucket) insertMeta(id string, meta *Metadata) error {
+	return b.meta.Update(func(txn *badger.Txn) error {
+		data, err := meta.Marshal()
+		if err != nil {
+			return err
+		}
+		return txn.Set([]byte(id), data)
+	})
 }
 
 func (b Bucket) deleteName(id string) error {
@@ -283,6 +274,19 @@ func (b Bucket) deleteName(id string) error {
 		}
 		return nil
 	})
+}
+
+func (b Bucket) deleteMeta(id string) error {
+	return b.meta.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(id))
+	})
+}
+
+func (b Bucket) nameFormat(name, owner string) string {
+	// choosing the name format as <name>_<owner> allows
+	// to have unique names in the context of a owner e.g.
+	// owner 1 can have name_1 and owner 2 can have name_2.
+	return fmt.Sprintf("%s_%s", name, owner)
 }
 
 // createObjectEntry validates the object and creates a entry.
@@ -311,14 +315,18 @@ func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 
 		for it.Rewind(); it.Valid(); it.Next() {
 			err := it.Item().Value(func(val []byte) error {
-				obj := &Object{}
-				if err := obj.Unmarshal(val); err != nil {
+				m := NewMetadata()
+				if err := m.Unmarshal(val); err != nil {
 					return err
 				}
-				if obj.Owner() == owner {
-					objs = append(objs, obj)
+				if m.Get(MetaKeyOwner) != owner {
 					return nil
 				}
+				obj, err := b.composeObject(m)
+				if err != nil {
+					return err
+				}
+				objs = append(objs, obj)
 				return nil
 			})
 			if err != nil {
@@ -328,6 +336,44 @@ func (b Bucket) GetByOwner(owner string) ([]*Object, error) {
 		return nil
 	})
 	return objs, err
+}
+
+func (b Bucket) composeObject(meta *Metadata) (*Object, error) {
+	id := meta.Get(MetaKeyID)
+	obj := &Object{
+		meta: meta,
+	}
+	err := b.payload.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		return obj.Unmarshal(dst)
+	})
+	return obj, err
+}
+
+func (b Bucket) composeObjectByID(id string) (*Object, error) {
+	m := NewMetadata()
+	err := b.meta.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		return m.Unmarshal(dst)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return b.composeObject(m)
 }
 
 func (b Bucket) FilterByMeta(objs []*Object, meta Metadata, act action) []*Object {

@@ -33,7 +33,7 @@ type Metadata struct {
 func NewMetadata() *Metadata {
 	return &Metadata{
 		data:       make(map[MetaKey]string),
-		systemKeys: []MetaKey{MetaKeyID, MetaKeyCreatedAt},
+		systemKeys: []MetaKey{MetaKeyID, MetaKeyCreatedAt, MetaKeyName, MetaKeyOwner},
 	}
 }
 
@@ -48,6 +48,12 @@ func (m Metadata) Set(k MetaKey, v string) {
 		return
 	}
 	m.data[k] = v
+}
+
+// Is checks if the value of the given MetaKey
+// is equal to `v`.
+func (m Metadata) Is(k MetaKey, v string) bool {
+	return m.Get(k) == v
 }
 
 func (m Metadata) Has(k MetaKey) bool {
@@ -85,7 +91,7 @@ func (m Metadata) isSystemMetaKey(k MetaKey) bool {
 }
 
 // set is intended for internal usage where
-// SystemMetaKeys can be set
+// SystemMetaKeys can be set.
 func (m Metadata) set(k MetaKey, v string) {
 	m.data[k] = v
 }
@@ -104,4 +110,9 @@ func (m Metadata) Marshal() ([]byte, error) {
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(m.data)
 	return buf.Bytes(), err
+}
+
+func (m *Metadata) Unmarshal(data []byte) error {
+	r := bytes.NewReader(data)
+	return gob.NewDecoder(r).Decode(&m.data)
 }

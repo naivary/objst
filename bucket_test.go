@@ -235,7 +235,7 @@ func TestRunQuery(t *testing.T) {
 	m := NewMetadata()
 	m.Set("invalid", "true")
 	m.Set("foo", "bar")
-	q.WithMeta(m, Or)
+	q.WithMeta(m)
 
 	objs, err = tEnv.b.RunQuery(q)
 	if err != nil {
