@@ -20,7 +20,10 @@ func (m MetaKey) String() string {
 }
 
 type Metadata struct {
-	data       map[MetaKey]string
+	// the actual metadata
+	data map[MetaKey]string
+	// systemKeys contains all the keys
+	// which will be managed by objst.
 	systemKeys []MetaKey
 }
 
