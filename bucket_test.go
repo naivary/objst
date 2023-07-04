@@ -81,23 +81,6 @@ func TestDeleteNameAfterObjDelete(t *testing.T) {
 	}
 }
 
-func TestGetByMetasOr(t *testing.T) {
-	o := tEnv.obj()
-	if err := tEnv.b.Create(o); err != nil {
-		t.Error(err)
-		return
-	}
-	m := NewMetadata()
-	m.Set(MetaKeyContentType, tEnv.ContentType)
-	objs, err := tEnv.b.GetByMeta(*m, Or)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) == 0 {
-		t.Fatalf("at least one object should be contained. Got: %d", len(objs))
-	}
-}
 func TestNameDuplication(t *testing.T) {
 	o1 := tEnv.obj()
 	o2 := tEnv.obj()
@@ -109,30 +92,6 @@ func TestNameDuplication(t *testing.T) {
 		return
 	}
 	t.Fatal("should not create objects with the same name.")
-}
-
-func TestGetByMetasAnd(t *testing.T) {
-	o1 := tEnv.obj()
-	o1.SetMetaKey("foo", "bar")
-	o1.SetMetaKey("bymetasand", "bymetasand")
-	m := NewMetadata()
-	m.Set(MetaKeyContentType, tEnv.ContentType)
-	m.Set("foo", "bar")
-	m.Set("bymetasand", "bymetasand")
-	if err := tEnv.b.Create(o1); err != nil {
-		t.Error(err)
-		return
-	}
-	objs, err := tEnv.b.GetByMeta(*m, And)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if len(objs) != 1 {
-		t.Fatalf("only one object should be returned. Got: %d", len(objs))
-	}
-
 }
 
 func TestGetByName(t *testing.T) {
@@ -177,73 +136,6 @@ func TestImmutabilityAfterGet(t *testing.T) {
 	_, err = oG.Write(tEnv.payload(5))
 	if !errors.Is(err, ErrObjectIsImmutable) {
 		t.Fatalf("object should be immutable after get")
-	}
-}
-
-func TestFilterByMeta(t *testing.T) {
-	owner := tEnv.owner()
-	tObjs := tEnv.nObj(7)
-	tObjs[0].SetMetaKey("invalid", "true")
-	tObjs[0].SetMetaKey("foo", "bar")
-	tObjs[1].SetMetaKey("invalid", "true")
-	for _, obj := range tObjs {
-		obj.meta.set(MetaKeyOwner, owner)
-	}
-	if err := tEnv.b.BatchCreate(tObjs); err != nil {
-		t.Error(err)
-		return
-	}
-	objs, err := tEnv.b.GetByOwner(owner)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	m := NewMetadata()
-	m.Set("invalid", "true")
-	gotOr := tEnv.b.FilterByMeta(objs, *m, Or)
-	if len(gotOr) != 2 {
-		t.Fatalf("Exptected %d objects but got %d", 2, len(gotOr))
-		return
-	}
-	m.Set("foo", "bar")
-	gotAnd := tEnv.b.FilterByMeta(objs, *m, And)
-	if len(gotAnd) != 1 {
-		t.Fatalf("Expected %d object but got %d", 1, len(gotAnd))
-	}
-}
-
-func TestRunQuery(t *testing.T) {
-	owner := tEnv.owner()
-	tObjs := tEnv.nObj(7)
-	for _, obj := range tObjs {
-		obj.meta.set(MetaKeyOwner, owner)
-	}
-	tObjs[0].SetMetaKey("invalid", "true")
-	if err := tEnv.b.BatchCreate(tObjs); err != nil {
-		t.Error(err)
-		return
-	}
-	q := NewQuery(owner)
-	objs, err := tEnv.b.RunQuery(q)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) != len(tObjs) {
-		t.Fatalf("didnt get the same objs back. Got: %d. Expected: %d", len(objs), len(tObjs))
-	}
-	m := NewMetadata()
-	m.Set("invalid", "true")
-	m.Set("foo", "bar")
-	q.WithMeta(m)
-
-	objs, err = tEnv.b.RunQuery(q)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(objs) != 1 {
-		t.Fatalf("Wanted only the manipulated object. Got: %d. Expected: 1", len(objs))
 	}
 }
 

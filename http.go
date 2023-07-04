@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
 
@@ -83,7 +84,10 @@ func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
 // payload iff any object is found.
 func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	q := NewQuery()
+	if _, err := uuid.Parse(id); err != nil {
+		http.Error(w, "invalid ID. It must be a valid uuidv4", http.StatusBadRequest)
+		return
+	}
 	obj, err := h.bucket.GetByID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -91,13 +95,11 @@ func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
-		http.Error(w, "something went wrong while send the object", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-// TODO: allow custom content type to be passed in the form. If set
-// the will take precedence.
 func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(h.opts.MaxUploadSize); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

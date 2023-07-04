@@ -116,3 +116,28 @@ func (m *Metadata) Unmarshal(data []byte) error {
 	r := bytes.NewReader(data)
 	return gob.NewDecoder(r).Decode(&m.data)
 }
+
+func (m *Metadata) Compare(md *Metadata, act action) bool {
+	if act == Or {
+		return m.or(md)
+	}
+	return m.and(md)
+}
+
+func (m Metadata) or(md *Metadata) bool {
+	for k := range m.data {
+		if md.Has(k) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m Metadata) and(md *Metadata) bool {
+	for k := range m.data {
+		if !md.Has(k) {
+			return false
+		}
+	}
+	return true
+}

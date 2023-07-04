@@ -8,6 +8,10 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	objectNamePattern = "^[a-zA-Z0-9_.-/]+$"
+)
+
 type Object struct {
 	meta *Metadata
 	// payload of the object
@@ -90,14 +94,13 @@ func (o *Object) Unmarshal(data []byte) error {
 }
 
 func (o Object) isValid() error {
-	const namePattern = "^[a-zA-Z0-9_.-/]+$"
 	if !o.HasMetaKey(MetaKeyContentType) {
 		return ErrContentTypeNotExist
 	}
 	if len(o.pl.Bytes()) == 0 {
 		return ErrEmptyPayload
 	}
-	if ok, _ := regexp.MatchString(namePattern, o.Name()); !ok {
+	if ok, _ := regexp.MatchString(objectNamePattern, o.Name()); !ok {
 		return ErrInvalidNamePattern
 	}
 	return nil

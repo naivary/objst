@@ -3,10 +3,10 @@ package objst
 type action int
 
 const (
-	// localgical Or relationship
+	// logical `Or` relationship
 	Or action = iota + 1
 
-	// localgical And relationship
+	// logical `And` relationship
 	And
 )
 
@@ -38,6 +38,17 @@ func (q *Query) WithAction(act action) *Query {
 	return q
 }
 
-func (q *Query) WithMetaPair(k MetaKey, v string) {
+func (q *Query) WithMetaPair(k MetaKey, v string) *Query {
 	q.meta.Set(k, v)
+	return q
+}
+
+func (q *Query) WithID(id string) *Query {
+	q.meta.set(MetaKeyID, id)
+	return q
+}
+
+func (q *Query) WithName(name string) *Query {
+	q.meta.set(MetaKeyName, name)
+	return q
 }

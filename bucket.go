@@ -62,55 +62,36 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 	return b, nil
 }
 
-func (b Bucket) Get(q Query) ([]*Object, error) {
-	if q.act == Or {
-		return b.getOr(q)
-	}
-	return b.getAnd(q)
+func (b Bucket) GetByID(id string) (*Object, error) {
+	return b.composeObjectByID(id)
 }
 
-func (b Bucket) getOr(q Query) ([]*Object, error) {
-	const prefetchSize = 10
-	ids := make([]string, 0, prefetchSize)
-	err := b.meta.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchSize = prefetchSize
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			err := it.Item().Value(func(val []byte) error {
-				meta := NewMetadata()
-				if err := meta.Unmarshal(val); err != nil {
-					return err
-				}
-				if b.matchMetaOr(meta, q.meta) {
-					ids = append(ids, string(it.Item().Key()))
-				}
-				return nil
-			})
-			if err != nil {
-				return err
-			}
+func (b Bucket) GetByName(name, owner string) (*Object, error) {
+	var id string
+	err := b.names.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
+		if err != nil {
+			return err
 		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		id = string(dst)
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	objs := make([]*Object, 0, len(ids))
-	for _, id := range ids {
-		obj, err := b.composeObjectByID(id)
-		if err != nil {
-			return nil, err
-		}
-		objs = append(objs, obj)
-	}
-	return objs, nil
+	return b.GetByID(id)
 }
 
-func (b Bucket) getAnd(q Query) ([]*Object, error) {
-	return nil, nil
+func (b Bucket) Get(q *Query) ([]*Object, error) {
+	ids, err := b.matchedIDs(q)
+	if err != nil {
+		return nil, err
+	}
+	return b.IdsToObjs(ids)
 }
 
 // Create inserts the given object into the storage.
@@ -161,6 +142,19 @@ func (b Bucket) BatchCreate(objs []*Object) error {
 	return wb.Flush()
 }
 
+func (b Bucket) Delete(q *Query) error {
+	ids, err := b.matchedIDs(q)
+	if err != nil {
+		return nil
+	}
+	for _, id := range ids {
+		if err := b.DeleteByID(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (b Bucket) DeleteByID(id string) error {
 	err := b.payload.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(id))
@@ -199,6 +193,47 @@ func (b Bucket) Shutdown() error {
 		return err
 	}
 	return b.names.Close()
+}
+
+func (b Bucket) matchedIDs(q *Query) ([]string, error) {
+	const prefetchSize = 10
+	ids := make([]string, 0, prefetchSize)
+	err := b.meta.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchSize = prefetchSize
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			err := it.Item().Value(func(val []byte) error {
+				meta := NewMetadata()
+				if err := meta.Unmarshal(val); err != nil {
+					return err
+				}
+				if meta.Compare(q.meta, q.act) {
+					ids = append(ids, string(it.Item().Key()))
+				}
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return ids, err
+}
+
+func (b Bucket) IdsToObjs(ids []string) ([]*Object, error) {
+	objs := make([]*Object, 0, len(ids))
+	for _, id := range ids {
+		obj, err := b.composeObjectByID(id)
+		if err != nil {
+			return nil, err
+		}
+		objs = append(objs, obj)
+	}
+	return objs, nil
 }
 
 func (b Bucket) nameExists(name, owner string) bool {
@@ -305,26 +340,4 @@ func (b Bucket) composeObjectByID(id string) (*Object, error) {
 		return nil, err
 	}
 	return b.composeObject(m)
-}
-
-// matchMetaOr checks if m1 has at least one key-pair
-// in common with m2
-func (b Bucket) matchMetaOr(m1, m2 *Metadata) bool {
-	for k := range m1.data {
-		if m2.Has(k) {
-			return true
-		}
-	}
-	return false
-}
-
-// matchMetaAnd checks if all key-pairs existing
-// in m1 are also present in m2.
-func (b Bucket) matchMetaAnd(m1, m2 *Metadata) bool {
-	for k := range m1.data {
-		if !m2.Has(k) {
-			return false
-		}
-	}
-	return true
 }
