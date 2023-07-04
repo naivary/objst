@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/naivary/objst/models"
 )
 
@@ -157,49 +157,78 @@ func TestHTTPUpload(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	ctx := context.WithValue(r.Context(), CtxKeyOwner, tEnv.owner())
-	res, err := tEnv.ts.Client().Do(r.WithContext(ctx))
-	if err != nil {
-		t.Error(err)
-		return
+	// injectOwner is a potential middleware to authorize and intject the
+	// owner into the middleware
+	injectOwner := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), CtxKeyOwner, uuid.NewString())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
 	}
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("statuscode is not %d. Got: %d", http.StatusOK, res.StatusCode)
+	hl := injectOwner(tEnv.h)
+	w := httptest.NewRecorder()
+	hl.ServeHTTP(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("statuscode is not %d. Got: %d", http.StatusOK, w.Code)
 	}
 }
 
-func TestCtxInjection(t *testing.T) {
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		value := ctx.Value(CtxKeyOwner)
-		if value == nil {
-			t.Error("Custom context value is missing")
-			return
-		}
-		fmt.Println(value)
-		w.WriteHeader(http.StatusOK)
-	})
-
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-
-	req, err := http.NewRequest(http.MethodGet, ts.URL, nil)
+func TestHTTPUploadUknownMimeType(t *testing.T) {
+	target, err := url.JoinPath(tEnv.ts.URL, route, "upload")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-
-	ctx := context.WithValue(req.Context(), CtxKeyOwner, "custom-value")
-	req = req.WithContext(ctx)
-
-	res, err := ts.Client().Do(req)
+	opts := map[string]string{
+		"contentType": "text/plain",
+	}
+	r, err := tEnv.newUploadRequest(target, opts, tEnv.h.opts.FormKey, "testdata/files/unofficial.testtype")
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer res.Body.Close()
+	// injectOwner is a potential middleware to authorize and intject the
+	// owner into the middleware
+	injectOwner := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), CtxKeyOwner, uuid.NewString())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+	hl := injectOwner(tEnv.h)
+	w := httptest.NewRecorder()
+	hl.ServeHTTP(w, r)
 
-	if res.StatusCode != http.StatusOK {
-		t.Error("Wrong status code")
+	if w.Code != http.StatusOK {
+		t.Fatalf("statuscode is not %d. Got: %d. Res: %v", http.StatusOK, w.Code, w.Body)
+	}
+}
+
+func TestHTTPUploadUknownMimeTypeAndEmptyCt(t *testing.T) {
+	target, err := url.JoinPath(tEnv.ts.URL, route, "upload")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	r, err := tEnv.newUploadRequest(target, nil, tEnv.h.opts.FormKey, "testdata/files/unofficial.testtype")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	// injectOwner is a potential middleware to authorize and intject the
+	// owner into the middleware
+	injectOwner := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ctx := context.WithValue(r.Context(), CtxKeyOwner, uuid.NewString())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+	hl := injectOwner(tEnv.h)
+	w := httptest.NewRecorder()
+	hl.ServeHTTP(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("statuscode is not %d. Got: %d. Res: %v", http.StatusOK, w.Code, w.Body)
 	}
 }

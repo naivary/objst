@@ -8,7 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/naivary/objst/models"
@@ -25,71 +25,45 @@ var (
 	ErrMissingOwner = errors.New("missing owner in the request context")
 )
 
-type HTTPHandlerOptions struct {
-	// MaxUploadSize is limiting the size of a file
-	// which can be uploaded using the /objst/upload
-	// endpoint. Default: 32 MB.
-	MaxUploadSize int64
-	// FormKey is the key to access the file
-	// in the multipart form. Default: "file"
-	FormKey string
-	// IsAuthorized is the middleware used to authorize
-	// the incoming request. By default no authorization
-	// checks will be done.
-	IsAuthorized func(http.Handler) http.Handler
-}
-
 type HTTPHandler struct {
-	router chi.Router
 	bucket *Bucket
 	logger *slog.Logger
 	opts   HTTPHandlerOptions
 }
 
-func DefaultHTTPHandlerOptions() HTTPHandlerOptions {
-	opts := HTTPHandlerOptions{}
-	// ~33 MB
-	opts.MaxUploadSize = 32 << 20
-	opts.FormKey = "file"
-	opts.IsAuthorized = isAuthorized
-	return opts
-}
-
-func NewHTTPHandler(b *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
-	h := &HTTPHandler{}
-	r := chi.NewRouter()
-	h.opts = opts
-	r.Route("/objst", func(r chi.Router) {
-		r.Post("/", h.create)
-		// authorization needed routes
-		r.Route("/", func(r chi.Router) {
-			r.Use(h.opts.IsAuthorized)
-			r.Get("/read/{id}", h.read)
-			r.Get("/{id}", h.get)
-			r.Delete("/{id}", h.remove)
-		})
-		r.Route("/upload", func(r chi.Router) {
-			r.Use(h.assureOwner)
-			r.Post("/", h.upload)
-		})
-	})
-	h.bucket = b
-	h.router = r
-	h.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-	return h
-}
-
-// isAuthorized is the default authorization method which accepts all requests.
-func isAuthorized(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		next.ServeHTTP(w, r)
-	})
+func NewHTTPHandler(bucket *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
+	hl := HTTPHandler{}
+	hl.opts = opts
+	if opts.Handler == nil {
+		hl.opts.Handler = hl.routes()
+	}
+	hl.bucket = bucket
+	hl.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	return &hl
 }
 
 // ServeHTTP implements http.Handler
 func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.Context().Value(CtxKeyOwner))
-	h.router.ServeHTTP(w, r)
+	h.opts.Handler.ServeHTTP(w, r)
+}
+
+func (h *HTTPHandler) routes() chi.Router {
+	r := chi.NewRouter()
+	r.Use(h.opts.IsAuthenticated)
+	r.Route("/objst", func(r chi.Router) {
+		r.Post("/", h.Create)
+		r.Route("/", func(r chi.Router) {
+			r.Use(h.opts.IsAuthorized)
+			r.Get("/read/{id}", h.Read)
+			r.Get("/{id}", h.Get)
+			r.Delete("/{id}", h.Remove)
+		})
+		r.Route("/upload", func(r chi.Router) {
+			r.Use(h.assureOwner)
+			r.Post("/", h.Upload)
+		})
+	})
+	return r
 }
 
 func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
@@ -107,7 +81,9 @@ func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
 	})
 }
 
-func (h *HTTPHandler) get(w http.ResponseWriter, r *http.Request) {
+// Get will return the object model witht he given
+// payload iff any object is found.
+func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	obj, err := h.bucket.GetByID(id)
 	if err != nil {
@@ -123,7 +99,7 @@ func (h *HTTPHandler) get(w http.ResponseWriter, r *http.Request) {
 
 // TODO: allow custom content type to be passed in the form. If set
 // the will take precedence.
-func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(h.opts.MaxUploadSize); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -133,7 +109,6 @@ func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	ext := strings.Split(header.Filename, ".")[1]
 	owner := r.Context().Value(CtxKeyOwner).(string)
 	obj, err := NewObject(header.Filename, owner)
 	if err != nil {
@@ -144,7 +119,14 @@ func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	contentType := mime.TypeByExtension(ext)
+	contentType := mime.TypeByExtension(filepath.Ext(header.Filename))
+	if contentType == "" {
+		userCt := r.Form.Get(string(MetaKeyContentType))
+		if userCt == "" {
+			http.Error(w, "content type of the file is not an official mime-type and no contentType key could be found in the form", http.StatusBadRequest)
+			return
+		}
+	}
 	obj.SetMeta(ContentTypeMetaKey, contentType)
 	if err := h.bucket.Create(obj); err != nil {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
@@ -157,7 +139,7 @@ func (h *HTTPHandler) upload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandler) read(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) Read(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	obj, err := h.bucket.GetByID(id)
 	if err != nil {
@@ -171,7 +153,7 @@ func (h *HTTPHandler) read(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) Create(w http.ResponseWriter, r *http.Request) {
 	m := models.Object{}
 	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 		http.Error(w, "something went wrong while decoding the data into the model", http.StatusBadRequest)
@@ -193,7 +175,7 @@ func (h *HTTPHandler) create(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *HTTPHandler) remove(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPHandler) Remove(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if err := h.bucket.DeleteByID(id); err != nil {
 		msg := fmt.Sprintf("couldn't delete the object with the id %s", id)
