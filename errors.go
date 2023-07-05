@@ -16,7 +16,8 @@ var (
 
 // HTTP errors
 var (
-	ErrMissingOwner = errors.New("missing owner in the request context")
+	ErrMissingOwner      = errors.New("missing owner in the request context")
+	ErrUknownContentType = errors.New("content type of the file is not an official mime-type and no contentType key could be found in the form")
 )
 
 // Query errors

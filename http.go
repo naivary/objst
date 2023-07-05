@@ -79,6 +79,7 @@ func (h *HTTPHandler) routes() chi.Router {
 func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(id); err != nil {
+		slog.WarnCtx(r.Context(), "invalid uuid", "uuid", id)
 		http.Error(w, "invalid ID. It must be a valid uuidv4", http.StatusBadRequest)
 		return
 	}

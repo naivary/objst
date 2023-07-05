@@ -139,7 +139,6 @@ func TestHTTPGet(t *testing.T) {
 	if !bytes.Equal(data1, data2) {
 		t.Fatalf("models are not equal. Got: %v. Expected: %v", m, o.ToModel())
 	}
-
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("statuscode is not %d", http.StatusOK)
 	}
