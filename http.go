@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
-	"golang.org/x/exp/slog"
 )
 
 const defaultTimeout = 5 * time.Second
@@ -32,7 +30,6 @@ type objectModel struct {
 
 type HTTPHandler struct {
 	bucket *Bucket
-	logger *slog.Logger
 	opts   HTTPHandlerOptions
 }
 
@@ -43,7 +40,6 @@ func NewHTTPHandler(bucket *Bucket, opts HTTPHandlerOptions) *HTTPHandler {
 		hl.opts.Handler = hl.routes()
 	}
 	hl.bucket = bucket
-	hl.logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	return &hl
 }
 
@@ -79,7 +75,6 @@ func (h *HTTPHandler) routes() chi.Router {
 func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if _, err := uuid.Parse(id); err != nil {
-		slog.WarnCtx(r.Context(), "invalid uuid", "uuid", id)
 		http.Error(w, "invalid ID. It must be a valid uuidv4", http.StatusBadRequest)
 		return
 	}
