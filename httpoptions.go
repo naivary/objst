@@ -1,6 +1,11 @@
 package objst
 
-import "net/http"
+import (
+	"net/http"
+	"os"
+
+	"golang.org/x/exp/slog"
+)
 
 type HTTPHandlerOptions struct {
 	// MaxUploadSize is limiting the size of a file
@@ -28,6 +33,10 @@ type HTTPHandlerOptions struct {
 	// By default if the handler is nil it will be replaced
 	// by the default handler.
 	Handler http.Handler
+
+	// Logger is the default logger. By default slog.Logger
+	// with the text handler will be used.
+	Logger *slog.Logger
 }
 
 func DefaultHTTPHandlerOptions() HTTPHandlerOptions {
@@ -42,6 +51,7 @@ func DefaultHTTPHandlerOptions() HTTPHandlerOptions {
 	opts.IsAuthorized = isAuthorized
 	opts.IsAuthenticated = isAuthenticated
 	opts.Handler = nil
+	opts.Logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	return opts
 }
 
