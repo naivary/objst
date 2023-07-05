@@ -21,5 +21,6 @@ var (
 
 // Query errors
 var (
-	ErrInvalidQuery = errors.New("query is invalid. Missing owner")
+	ErrEmptyQuery          = errors.New("empty query")
+	ErrNameOwnerCtxMissing = errors.New("name is set but missing owner")
 )

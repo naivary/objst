@@ -183,7 +183,7 @@ func TestQuery(t *testing.T) {
 		}
 	}
 
-	q := NewQuery().WithMetaPair(foo, bar)
+	q := NewQuery().Param(foo, bar)
 	fetchedObjs, err := tEnv.b.Get(q)
 	if err != nil {
 		t.Error(err)

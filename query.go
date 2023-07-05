@@ -1,5 +1,9 @@
 package objst
 
+import (
+	"fmt"
+)
+
 type action int
 
 const (
@@ -10,30 +14,91 @@ const (
 	And
 )
 
+type identifier int
+
+const (
+	ID identifier = iota + 1
+
+	Name
+)
+
 type Query struct {
-	meta *Metadata
+	params *Metadata
 	// logical action of the meta datas
 	act action
+
+	singleEntryIdentitifer identifier
 }
 
 func NewQuery() *Query {
 	return &Query{
-		meta: NewMetadata(),
-		act:  Or,
+		params: NewMetadata(),
+		act:    Or,
 	}
 }
 
-func (q *Query) WithOwner(owner string) *Query {
-	q.meta.set(MetaKeyOwner, owner)
+func (q *Query) Owner(owner string) *Query {
+	q.params.set(MetaKeyOwner, owner)
 	return q
 }
 
-func (q *Query) WithAction(act action) *Query {
+func (q *Query) ID(id string) *Query {
+	q.params.set(MetaKeyID, id)
+	return q
+}
+
+func (q *Query) Name(name string) *Query {
+	q.params.set(MetaKeyName, name)
+	return q
+}
+
+// Action sets the logical connection
+// between the params and the meta data
+// of all compared objects.
+func (q *Query) Action(act action) *Query {
 	q.act = act
 	return q
 }
 
-func (q *Query) WithMetaPair(k MetaKey, v string) *Query {
-	q.meta.Set(k, v)
+// Param sets a given key value pair as a parameter
+// of the query.
+func (q *Query) Param(k MetaKey, v string) *Query {
+	q.params.Set(k, v)
 	return q
+}
+
+func (q *Query) isValid() error {
+	if len(q.params.data) <= 0 {
+		return ErrEmptyQuery
+	}
+	if !isValidUUID(q.params.Get(MetaKeyOwner)) {
+		return fmt.Errorf("invalid uuid for the field `owner`: %s", q.params.Get(MetaKeyOwner))
+	}
+	if !isValidUUID(q.params.Get(MetaKeyID)) {
+		return fmt.Errorf("invalid uuid for the field `id`: %s", q.params.Get(MetaKeyID))
+	}
+	if q.params.Get(MetaKeyName) != "" && q.params.Get(MetaKeyOwner) == "" {
+		return ErrNameOwnerCtxMissing
+	}
+	return nil
+}
+
+func (q *Query) isSingleEntry() bool {
+	if q.params.Get(MetaKeyID) != "" {
+		q.singleEntryIdentitifer = ID
+		return true
+	}
+	if q.params.Get(MetaKeyName) != "" {
+		q.singleEntryIdentitifer = Name
+		return true
+	}
+	return false
+}
+
+func (q *Query) isNameIdentifier() bool {
+	return q.singleEntryIdentitifer == Name
+}
+
+func (q *Query) isIDIdentifier() bool {
+	return q.singleEntryIdentitifer == ID
 }

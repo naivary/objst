@@ -233,7 +233,7 @@ func (b Bucket) getMatchingIDs(q *Query) ([]string, error) {
 				if err := meta.Unmarshal(val); err != nil {
 					return err
 				}
-				if meta.Compare(q.meta, q.act) {
+				if meta.Compare(q.params, q.act) {
 					dst := make([]byte, it.Item().KeySize())
 					it.Item().KeyCopy(dst)
 					ids = append(ids, string(dst))

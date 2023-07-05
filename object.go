@@ -3,7 +3,6 @@ package objst
 import (
 	"bytes"
 	"io"
-	"regexp"
 
 	"github.com/google/uuid"
 )
@@ -100,7 +99,7 @@ func (o Object) isValid() error {
 	if len(o.pl.Bytes()) == 0 {
 		return ErrEmptyPayload
 	}
-	if ok, _ := regexp.MatchString(objectNamePattern, o.Name()); !ok {
+	if !isValidObjectName(o.Name()) {
 		return ErrInvalidNamePattern
 	}
 	return nil
