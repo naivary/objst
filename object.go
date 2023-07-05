@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	//TODO: make <some-name>.<regex> regex
-	objectNamePattern = "^([a-zA-Z0-9_./-]+)(\\.[a-z]+)$"
+	objectNamePattern = "^([a-zA-Z0-9_.\\/-]+)(\\.[a-z]+)$"
 )
 
 type Object struct {

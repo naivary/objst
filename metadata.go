@@ -91,7 +91,7 @@ func (m Metadata) isSystemMetaKey(k MetaKey) bool {
 }
 
 // set is intended for internal usage where
-// SystemMetaKeys can be set.
+// system MetaKeys can be set.
 func (m Metadata) set(k MetaKey, v string) {
 	m.data[k] = v
 }
