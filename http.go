@@ -22,10 +22,10 @@ const (
 )
 
 type objectModel struct {
-	ID       string             `json:"id"`
-	Name     string             `json:"name"`
-	Owner    string             `json:"owner"`
-	Metadata map[MetaKey]string `json:"metadata"`
+	ID       string             `json:"id,omitempty"`
+	Name     string             `json:"name,omitempty"`
+	Owner    string             `json:"owner,omitempty"`
+	Metadata map[MetaKey]string `json:"metadata,omitempty"`
 }
 
 type HTTPHandler struct {
