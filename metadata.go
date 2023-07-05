@@ -50,12 +50,6 @@ func (m Metadata) Set(k MetaKey, v string) {
 	m.data[k] = v
 }
 
-// Is checks if the value of the given MetaKey
-// is equal to `v`.
-func (m Metadata) Is(k MetaKey, v string) bool {
-	return m.Get(k) == v
-}
-
 func (m Metadata) Has(k MetaKey) bool {
 	_, ok := m.data[k]
 	return ok
