@@ -78,6 +78,11 @@ func (q *Query) Param(k MetaKey, v string) *Query {
 	return q
 }
 
+func (q *Query) Operation(op operation) *Query {
+	q.op = op
+	return q
+}
+
 func (q *Query) isValid() error {
 	if len(q.params.data) <= 0 {
 		return ErrEmptyQuery

@@ -64,6 +64,9 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 }
 
 func (b Bucket) Execute(q *Query) ([]*Object, error) {
+	if err := q.isValid(); err != nil {
+		return nil, err
+	}
 	// empty object array for operation which
 	// do not return any objects
 	var defRes []*Object

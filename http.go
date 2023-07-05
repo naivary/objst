@@ -6,16 +6,21 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
 	"golang.org/x/exp/slog"
 )
+
+const defaultTimeout = 5 * time.Second
 
 type CtxKey string
 
 const (
 	CtxKeyOwner CtxKey = "owner"
+	CtxKeyReqID CtxKey = "reqid"
 )
 
 type objectModel struct {
@@ -50,6 +55,10 @@ func (h *HTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *HTTPHandler) routes() chi.Router {
 	r := chi.NewRouter()
 	r.Use(h.opts.IsAuthenticated)
+	r.Use(requestID)
+	r.Use(middleware.CleanPath)
+	r.Use(middleware.Timeout(defaultTimeout))
+
 	r.Route("/objst", func(r chi.Router) {
 		r.Route("/", func(r chi.Router) {
 			r.Use(h.opts.IsAuthorized)
@@ -58,26 +67,11 @@ func (h *HTTPHandler) routes() chi.Router {
 			r.Delete("/{id}", h.Remove)
 		})
 		r.Route("/upload", func(r chi.Router) {
-			r.Use(h.assureOwner)
+			r.Use(assureOwner)
 			r.Post("/", h.Upload)
 		})
 	})
 	return r
-}
-
-func (h *HTTPHandler) assureOwner(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		owner, ok := r.Context().Value(CtxKeyOwner).(string)
-		if !ok {
-			http.Error(w, "owner in request context is not a string", http.StatusBadRequest)
-			return
-		}
-		if owner == "" {
-			http.Error(w, ErrMissingOwner.Error(), http.StatusBadRequest)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
 }
 
 // Get will return the object model witht he given

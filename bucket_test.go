@@ -163,7 +163,7 @@ func TestInsertAfterRead(t *testing.T) {
 	}
 }
 
-func TestQuery(t *testing.T) {
+func TestQueryGet(t *testing.T) {
 	const (
 		limit int     = 10
 		foo   MetaKey = "foo"
@@ -183,14 +183,89 @@ func TestQuery(t *testing.T) {
 		}
 	}
 
-	q := NewQuery().Param(foo, bar)
-	fetchedObjs, err := tEnv.b.Get(q)
-	if err != nil {
-		t.Error(err)
-		return
+	tests := []struct {
+		name string
+		q    *Query
+		c    int
+	}{
+		{
+			name: "fetching multiple objects",
+			q:    NewQuery().Param(foo, bar),
+			c:    limit + 1,
+		},
+		{
+			name: "fetching only one by id",
+			q:    NewQuery().ID(objs[0].ID()),
+			c:    1,
+		},
+		{
+			name: "fetching only one by name",
+			q:    NewQuery().Name(objs[0].Name()).Owner(objs[0].Owner()),
+			c:    1,
+		},
 	}
-	if len(fetchedObjs) != limit+1 {
-		t.Fatalf("not the right number fetched. Got: %d. Expected: %d", len(fetchedObjs), limit+1)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fetchedObjs, err := tEnv.b.Execute(test.q)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if len(fetchedObjs) != test.c {
+				t.Fatalf("not the right number fetched. Got: %d. Expected: %d", len(fetchedObjs), test.c)
+			}
+		})
+	}
+}
+
+func TestQueryDelete(t *testing.T) {
+	const (
+		limit int     = 10
+		foo   MetaKey = "foo"
+		bar   string  = "bar"
+	)
+	objs := tEnv.nObj(20)
+	for i := 0; i < len(objs); i++ {
+		objs[i].SetMetaKey(foo, bar)
+		if i == limit {
+			break
+		}
+	}
+	for _, obj := range objs {
+		if err := tEnv.b.Create(obj); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	tests := []struct {
+		name    string
+		q       *Query
+		wantErr bool
+	}{
+		{
+			name: "deleting one entry by id",
+			q:    NewQuery().ID(objs[0].ID()).Operation(Delete),
+		},
+		{
+			name: "deleting multiple entries",
+			q:    NewQuery().Param(foo, bar).Operation(Delete),
+		},
+		{
+			name: "deleting one entry by name",
+			q:    NewQuery().Name(objs[11].Name()).Owner(objs[11].Owner()).Operation(Delete),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := tEnv.b.Execute(test.q)
+			if err != nil && !test.wantErr {
+				t.Error(err)
+				return
+			}
+		})
 	}
 }
 
