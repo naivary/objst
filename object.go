@@ -146,10 +146,6 @@ func (o *Object) Reset() {
 	o.pl.Reset()
 }
 
-func (o *Object) markAsImmutable() {
-	o.isMutable = false
-}
-
 func (o *Object) ToModel() *objectModel {
 	return &objectModel{
 		ID:       o.ID(),
@@ -157,4 +153,8 @@ func (o *Object) ToModel() *objectModel {
 		Owner:    o.Owner(),
 		Metadata: o.meta.UserDefinedPairs(),
 	}
+}
+
+func (o *Object) markAsImmutable() {
+	o.isMutable = false
 }
