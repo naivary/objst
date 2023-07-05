@@ -12,6 +12,11 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+const (
+	contentType     = "Content-type"
+	applicationJSON = "application/json"
+)
+
 const defaultTimeout = 5 * time.Second
 
 type CtxKey string
@@ -86,6 +91,7 @@ func (h *HTTPHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	w.Header().Set(contentType, applicationJSON)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
 		h.opts.Logger.ErrorCtx(r.Context(), err.Error(), slog.String("req_id", reqID))
@@ -134,7 +140,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(contentType, applicationJSON)
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
 		h.opts.Logger.ErrorCtx(r.Context(), err.Error(), slog.String("req_id", reqID))
