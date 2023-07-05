@@ -17,15 +17,25 @@ const (
 type identifier int
 
 const (
-	ID identifier = iota + 1
+	id identifier = iota + 1
 
-	Name
+	name
+)
+
+type operation int
+
+const (
+	Delete = iota + 1
+
+	Get
 )
 
 type Query struct {
 	params *Metadata
 	// logical action of the meta datas
 	act action
+
+	op operation
 
 	singleEntryIdentitifer identifier
 }
@@ -34,6 +44,7 @@ func NewQuery() *Query {
 	return &Query{
 		params: NewMetadata(),
 		act:    Or,
+		op:     Get,
 	}
 }
 
@@ -85,20 +96,16 @@ func (q *Query) isValid() error {
 
 func (q *Query) isSingleEntry() bool {
 	if q.params.Get(MetaKeyID) != "" {
-		q.singleEntryIdentitifer = ID
+		q.singleEntryIdentitifer = id
 		return true
 	}
 	if q.params.Get(MetaKeyName) != "" {
-		q.singleEntryIdentitifer = Name
+		q.singleEntryIdentitifer = name
 		return true
 	}
 	return false
 }
 
-func (q *Query) isNameIdentifier() bool {
-	return q.singleEntryIdentitifer == Name
-}
-
 func (q *Query) isIDIdentifier() bool {
-	return q.singleEntryIdentitifer == ID
+	return q.singleEntryIdentitifer == id
 }

@@ -6,13 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestQueryBuild(t *testing.T) {
-	q := NewQuery()
-	err := q.isValid()
-	t.Log(err)
-
-}
-
 func TestQuery_isValid(t *testing.T) {
 	type fields struct {
 		params *Metadata

@@ -3,6 +3,7 @@ package objst
 import (
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 
 	"github.com/dgraph-io/badger/v4"
@@ -60,6 +61,50 @@ func NewBucket(opts badger.Options) (*Bucket, error) {
 		uniqueBasePath: uniqueBasePath,
 	}
 	return b, nil
+}
+
+func (b Bucket) Execute(q *Query) ([]*Object, error) {
+	// empty object array for operation which
+	// do not return any objects
+	var defRes []*Object
+	name := q.params.Get(MetaKeyName)
+	id := q.params.Get(MetaKeyID)
+	owner := q.params.Get(MetaKeyOwner)
+	// check if it is a multi query
+	if q.op == Get && !q.isSingleEntry() {
+		return b.Get(q)
+	} else if q.op == Get && q.isSingleEntry() {
+		// check which kind of single get it is
+		objs := make([]*Object, 0, 1)
+		var (
+			obj *Object
+			err error
+		)
+		if q.isIDIdentifier() {
+			obj, err = b.GetByID(id)
+		} else {
+			obj, err = b.GetByName(name, owner)
+		}
+		objs = append(objs, obj)
+		return objs, err
+
+	}
+
+	if q.op == Delete && !q.isSingleEntry() {
+		err := b.Delete(q)
+		return defRes, err
+	}
+
+	if q.op == Delete && q.isSingleEntry() {
+		if q.isIDIdentifier() {
+			err := b.DeleteByID(id)
+			return defRes, err
+		}
+		err := b.DeleteByName(name, owner)
+		return defRes, err
+	}
+
+	return nil, nil
 }
 
 func (b Bucket) GetByID(id string) (*Object, error) {
@@ -206,6 +251,15 @@ func (b Bucket) DeleteByName(name, owner string) error {
 		return nil
 	})
 	return b.DeleteByID(id)
+}
+
+func (b Bucket) Read(id string, w io.Writer) error {
+	obj, err := b.GetByID(id)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(w, obj)
+	return err
 }
 
 func (b Bucket) Shutdown() error {
