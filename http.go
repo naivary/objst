@@ -129,13 +129,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 func (h *HTTPHandler) Read(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	obj, err := h.bucket.GetByID(id)
-	if err != nil {
-		msg := fmt.Sprintf("something went wrong while getting the object. ID: %s", id)
-		http.Error(w, msg, http.StatusBadRequest)
-		return
-	}
-	if _, err := io.Copy(w, obj); err != nil {
+	if err := h.bucket.Read(id, w); err != nil {
 		http.Error(w, "something went wrong while streaming the object", http.StatusInternalServerError)
 		return
 	}

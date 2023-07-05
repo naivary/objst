@@ -147,27 +147,21 @@ func (b Bucket) Get(q *Query) ([]*Object, error) {
 // `BatchCreate` which is more performant than
 // multiple calls to Create.
 func (b Bucket) Create(obj *Object) error {
-	err := b.payload.Update(func(txn *badger.Txn) error {
-		if err := obj.isValid(); err != nil {
-			return err
-		}
-		e, err := b.createObjectEntry(obj)
-		if err != nil {
-			return err
-		}
-		if err := txn.SetEntry(e); err != nil {
-			return err
-		}
-		obj.markAsImmutable()
-		return nil
-	})
+	e, err := b.createObjectEntry(obj)
 	if err != nil {
+		return err
+	}
+	if err := b.insertPayload(string(e.Key), e.Value); err != nil {
 		return err
 	}
 	if err := b.insertName(obj.Name(), obj.Owner(), obj.ID()); err != nil {
 		return err
 	}
-	return b.insertMeta(obj.ID(), obj.meta)
+	if err := b.insertMeta(obj.ID(), obj.meta); err != nil {
+		return err
+	}
+	obj.markAsImmutable()
+	return nil
 }
 
 // BatchCreate inserts multiple objects in an efficient way.
@@ -342,6 +336,12 @@ func (b Bucket) insertMeta(id string, meta *Metadata) error {
 	})
 }
 
+func (b Bucket) insertPayload(id string, pl []byte) error {
+	return b.payload.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(id), pl)
+	})
+}
+
 func (b Bucket) deleteName(name, owner string) error {
 	return b.names.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(b.nameFormat(name, owner)))
@@ -363,13 +363,17 @@ func (b Bucket) deletePayload(id string) error {
 func (b Bucket) nameFormat(name, owner string) string {
 	// choosing the name format as <name>_<owner> allows
 	// to have unique names in the context of a owner e.g.
-	// owner 1 can have name_1 and owner 2 can have name_2.
+	// owner 1 can have foo_1 and owner 2 can have foo_2
+	// without having a duplication error.
 	return fmt.Sprintf("%s_%s", name, owner)
 }
 
 // createObjectEntry validates the object and creates a entry.
 // Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
+	if err := obj.isValid(); err != nil {
+		return nil, err
+	}
 	if b.isNameExisting(obj.Name(), obj.Owner()) {
 		return nil, fmt.Errorf("object with the name %s for the owner %s exists", obj.Name(), obj.Owner())
 	}
