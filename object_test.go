@@ -53,7 +53,7 @@ func TestWriteTo(t *testing.T) {
 
 func TestNamePattern(t *testing.T) {
 	o1 := tEnv.obj()
-	o1.meta.set(MetaKeyName, "invalid#name")
+	o1.meta.set(MetaKeyName, "invalidname")
 	if err := o1.isValid(); !errors.Is(err, ErrInvalidNamePattern) {
 		t.Fatalf("the name '%s' should not be valid.", o1.Name())
 	}

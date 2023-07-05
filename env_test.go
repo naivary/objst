@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/google/uuid"
 	"github.com/naivary/objst/random"
 )
@@ -30,7 +29,7 @@ func newTestEnv() (*testEnv, error) {
 	tEnv := testEnv{
 		ContentType: "test/text",
 	}
-	opts := badger.DefaultOptions("")
+	opts := NewDefaultBucketOptions()
 	// turn of default loggin of badger
 	opts.Logger = nil
 	b, err := NewBucket(opts)

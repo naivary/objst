@@ -3,6 +3,8 @@ package objst
 import (
 	"bytes"
 	"io"
+	"mime"
+	"path/filepath"
 
 	"github.com/google/uuid"
 )
@@ -31,6 +33,10 @@ func NewObject(name, owner string) (*Object, error) {
 		meta:      NewMetadata(),
 		pl:        new(bytes.Buffer),
 		isMutable: true,
+	}
+	contentType := mime.TypeByExtension(filepath.Ext(name))
+	if contentType != "" {
+		o.meta.set(MetaKeyContentType, contentType)
 	}
 	o.meta.set(MetaKeyID, uuid.NewString())
 	o.meta.set(MetaKeyName, name)

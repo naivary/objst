@@ -119,18 +119,22 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "couldn't copy the payload of the file into the object", http.StatusInternalServerError)
 		return
 	}
-	contentType, err := h.getContentType(header.Filename, r)
-	if err != nil {
-		h.opts.Logger.ErrorCtx(r.Context(), err.Error(), slog.String("req_id", reqID))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	if obj.GetMetaKey(MetaKeyContentType) == "" {
+		contentType := r.Form.Get("contentType")
+		if contentType == "" {
+			msg := "contentType meta key was not set for the object"
+			h.opts.Logger.ErrorCtx(r.Context(), msg, slog.String("req_id", reqID))
+			http.Error(w, msg, http.StatusBadRequest)
+			return
+		}
+		obj.SetMetaKey(MetaKeyContentType, contentType)
 	}
-	obj.SetMetaKey(MetaKeyContentType, contentType)
 	if err := h.bucket.Create(obj); err != nil {
 		h.opts.Logger.ErrorCtx(r.Context(), err.Error(), slog.String("req_id", reqID))
 		http.Error(w, "something went wrong while creating the object", http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(obj.ToModel()); err != nil {
 		h.opts.Logger.ErrorCtx(r.Context(), err.Error(), slog.String("req_id", reqID))

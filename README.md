@@ -1,155 +1,67 @@
 ## objst
 
-objst is an emmedable object storage written in golang. It is based upon
-BadgerDB, a highly performant key-value store.
+objst is an emmedable object storage written in golang. It can also be used to serve public
+http traffic with a default http handler. It is based upon BadgerDB, a highly performant key-value store.
 
-## Documentation
+## Docs
 
-### Create a Bucket
+The following section will explain the basic concepts on how to use objst and what some design choices.
 
-A bucket is the actual object storage containing all the data. An example can be:
+### Bucket
+
+A bucket is representing an object storage. It allows you to interact with the underlying
+object storage in an easy manner. To create a simple bucket you can use the following code snippet:
 
 ```golang
 func main() {
-  opts := badger.DefaultOptions("/tmp/objst")
-  b, err := objst.NewBucket(&opts)
+  opts := objst.NewDefaultBucketOptions()
+  bucket, err := objst.NewBucket(opts)
   if err != nil {
     panic(err)
   }
-  // use the bucket stored in `b` for example by creating a new object
-  obj := objst.NewObject("name of object", "owner of object")
-  if err := b.Create(obj); err != nil {
-    panic(err)
-  }
+  // use the bucket for different operations
 }
 ```
-
-For the full documentaiton of the bucket api see the [godocs](https://pkg.go.dev/github.com/naivary/objst)
 
 ### Object
 
-An object is the main abstraction in objst. An object can contain any payload in a `[]byte` format.
-Multiple helpful interfaces are implemented by object e.g. `io.Writer`, `io.Reader` or `io.WriteTo`
-and many more which allows you to integrate the object as a regular "file". The following examples will
-show some easy examples how to use objects and interact with the bucket/
+An object is the main abstraction in objst to represent different payload with some metadata.
 
-Create a single object with the name "name" and owner "owner". The owner of an object can be any uniquely
-identifiable string. Internal objst uses uuid which is the recommend way to use objst.
+An object can be created using the `NewObject` function:
 
 ```golang
 func main() {
-  // create a single object
-  obj := objst.NewObject("name", "owner")
-  // every object has to contain a contentType metadata key
-  obj.SetMeta(objst.ContentTypeMetaKey, "image/jpeg")
-  // every object has to contain some payload
-  if _, err := obj.Write([]byte("some random data")); err != nil {
-    panic(err)
-  }
-  // insert the object to the object storage
-  if err := bucket.Create(obj); err != nil {
-    panic(err)
-  }
-}
-```
-
-Create multiple objects using a batch writer. Using a `BatchCreate` for multiple objects
-instead of calling `Create` multiple times has extreme performance benefits.
-
-```golang
-  // create multiple objects at once
-  objs := []*objst.Object{...}
-  if err := bucket.BatchCreate(objs); err != nil {
-    panic(err)
-  }
-
-```
-
-Retrieve an object which is inserted in the object storage by name or id. Every object which is
-inserted once in the object storage will be marked as immutable. By retrieving an object
-you can only use read Operations upon the retrieved object. Only the metadata of the object can be changed.
-
-```golang
-
-func main() {
-  // get an object by id
-  obj, err := bucket.GetByID("d0f351d6-0fa7-4409-9d6c-46719f657016")
-  if err != nil {
-    panic(err)
-  }
-
-  // get an object by name.
-  obj, err := bucket.GetByName("name", "owner")
+  obj, err := objst.NewObject("name", "owner")
   if err != nil {
     panic(err)
   }
 }
 ```
 
-Some useful object operations
+NOTE: The owner of an object has to be a valid uuid-v4. The uuid can be created using the google package
+[google/uuid](https://github.com/google/uuid). It is used internally for testing and promises the most
+resilient results in production use.
+
+The object struct has implemented many useful interfaces which allow you to use it as a
+usual file. For example an object can be passed to any function which accepts an `io.Reader`:
 
 ```golang
 func main() {
-  obj, err := objst.NewObject("owner", "name")
+  obj, err := objst.NewObject("name", "owner")
   if err != nil {
     panic(err)
   }
 
-  // write some payload to the object
-  if _, err := obj.Write([]byte("foo")); err != nil {
-    panic(err)
-  }
-
-  // read the payload from the object
-  data := make([]byte, 0, 3)
-  if _, err := obj.Read(data); err != nil {
-    panic(err)
-  }
-
-  // write the data to another object
-  obj2, err := objst.NewObject("owner2", "name2")
-  if _, err := obj.WriteTo(obj2); err != nil {
-    panic(err)
-  }
 }
 ```
+
+By passing the object to a function accepting an `io.Reader` the `Read([]byte) (int, error)` function will be called
+but the payload of the object will not be lost. Still the behavior of the read operation is as you would expeted from
+any other read operation in golang. The returned error of `NewObject` function can be ignored if you can assure that name and owner
+will not be empty strings.
 
 ### Metadata
 
-The power of objst is the usage of metadata. Metadata are key value paris associacted with an object.
-For example `ContentType=image/jpeg`. This allows you to filter by the different key value pairs.
-Internally the metadata is represented by `url.Values{}`. Creating custom metas is as easy as creating a new
-`url.Values{}` struct.
+### Queries
 
-```golang
-func main() {
-  metadata := url.Values{}
-  metadata.Set(objst.ContentTypeMetaKey, "image/jpeg")
-
-  // Get all objects with the key value pair "ContentType=image/jpeg".
-  // objst.Or is the logical association of the metadata. It can
-  // either be objst.Or or objst.And.
-  objs, err := bucket.GetByMeta(metadata, objst.Or)
-  if err != nil {
-    panic(err)
-  }
-
-  // use the objects
-}
-```
-
-You can also filter a given slice of objects by metadata
-
-```golang
-func main() {
-  objs := []*objst.Object{...}
-  metadata := url.Values{}
-  metadata.Set("foo", "bar")
-  metadata.Set("foo", "rab")
-
-  // get all the objects which have
-  // the metadata foo=bar AND foo=rab
-  objs, err := bucket.FilterByMeta(objs, metadata, objst.And)
-}
-
-```
+### HTTP Handler
