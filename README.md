@@ -198,11 +198,8 @@ func main() {
 
 All endpoints require authentication some require authorization. You can specify
 how authorization or authentication is implemented by setting the `IsAuthorized`
-and `IsAuthenticated` middleware in the handler's options. The endpoints requiring
-authorization expected the owner uuid in the request context with the key
-`objst.CtxKeyOwner`. So don't forget to set the key otherwise the endpoints
-will not be able to serve the data. By default `IsAuthenticated` and `IsAuthorized` will
-allow all incoming request assigning some random owner to the request context.
+and `IsAuthenticated` middleware in the handler's options. By default `IsAuthenticated`
+and `IsAuthorized` will allow all incoming request.
 
 The endpoints are as follow:
 
