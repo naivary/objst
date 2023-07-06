@@ -88,6 +88,14 @@ func main() {
 There are some helper function implemented for the object struct e.g `ID()` or `Owner()` which will return the
 meta data in a convenient way. Calling `ID()` is the same as `obj.GetMetaKey(objst.MetaKeyID)`.
 
+#### objst.MetaKeyContentType
+
+One of the most important meta data is the content-type of the object. This will be used as the content-type to
+serve the object over http and is required for every object. objst is making best effort assumptions to get the officail
+mime-type of the uploaded file using the specified file extension. If the file extension cannot be found it will fallback
+to the user defined multipart form key `contentType`. If none is provided an error will be returned. If one is found it will
+automatically be registered to the runtime and the content-type meta data will be specified.
+
 ### Queries
 
 `objst.NewQuery` allows you to get multiple or one object at once in a convenient way. For example
@@ -173,7 +181,8 @@ The different endpoints are as follow:
 1. `GET /objst/{id}`: Get the object as a model without the payload. The model includes the name, owner, id and the user defined meta data.
 2. `GET /objst/read/{id}`: Read the payload of the object
 3. `DELETE /objst/{id}`: Delete the object
-4. `POST /objst/upload`: Upload a file to the object storage
+4. `POST /objst/upload`: Upload a file to the object storage. The file will be retrived using opts.FormKey. The Content-Type of
+   the object can be specified using the `contentType` key in the multipart form.
 
 ### Examples
 

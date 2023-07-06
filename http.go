@@ -132,7 +132,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if obj.GetMetaKey(MetaKeyContentType) == "" {
-		contentType := r.Form.Get("contentType")
+		contentType := r.Form.Get(MetaKeyContentType.String())
 		if contentType == "" {
 			msg := "contentType meta key was not set for the object"
 			h.opts.Logger.ErrorCtx(r.Context(), msg, slog.String("req_id", reqID))
