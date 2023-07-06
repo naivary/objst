@@ -64,10 +64,10 @@ func main() {
 
 ### Metadata
 
-The most powerful feature of `objst` is the use of meta data. Meta data are custom key=value
+The most powerful feature of `objst` is the use of meta data. Meta data are custom key-value
 pairs which will be associated with object and used for querying purposes. Setting a key-value
 on an object can be done using the `obj.SetMetaKey` function. Some meta data is managed directly
-by `objst` and cannot be manipulated by you. For example `objst.MetaKeyID` or `objst.MetaKeyCreatedAt`
+by objst and cannot be set by you. For example `objst.MetaKeyID` or `objst.MetaKeyCreatedAt`
 can not be set using `obj.SetMetaKey`. The key of the meta data is of type `objst.MetaKey` and the value
 is a string.
 
@@ -96,7 +96,7 @@ mime-type of the uploaded file using the specified file extension. If the file e
 to the user defined multipart form key `objst.MetaKeyContentType`. If none is provided an error will be returned. If one is
 found it will automatically be registered to the runtime and the content-type meta data will be specified. Every new object
 created after the extension is registered to the runtime using `objst.NewObject` will automatically have the `MetaKeyContentType`
-set so you don't have to worry about it. To make your life as easy as possible you can any kind of init function which will
+set so you don't have to worry about it. To make your life as easy as possible you can implement any kind of init function which will
 register your unofficial mime types using `mime.AddExtensionType`:
 
 ```golang
@@ -122,7 +122,7 @@ func run() error {
 }
 ```
 
-An example ist provided at [examples](./examples/mime/).
+An example is provided at [examples](./examples/mime/).
 
 ### Queries
 
@@ -138,7 +138,7 @@ func main() {
   }
   // Create a query with the parameter foo=bar and the `Get` operation
   // which is the default.
-  q := objst.NewQuery().Param("foo", "bar").Operation(objst.OperationGet)
+  q := objst.NewQuery().Param("foo", "bar")
 
   objs, err := bucket.Execute(q)
   if err != nil {
@@ -148,7 +148,7 @@ func main() {
 ```
 
 The query is smart engough to figure out if only one record will be fetched or multiple. This allows you
-to use queries to fetch one record:
+to use queries to fetch one record in an efficient manner:
 
 ```golang
 func main() {
@@ -177,7 +177,7 @@ func main() {
 
 ### HTTP Handler
 
-objst delivers a default `HTTPHandler` to serve public a bucket over http
+objst delivers a default `HTTPHandler` to serve objects over http.
 
 ```golang
 func main() {
@@ -204,13 +204,15 @@ authorization expected the owner uuid in the request context with the key
 will not be able to serve the data. By default `IsAuthenticated` and `IsAuthorized` will
 allow all incoming request assigning some random owner to the request context.
 
-The different endpoints are as follow:
+The endpoints are as follow:
 
 1. `GET /objst/{id}`: Get the object as a model without the payload. The model includes the name, owner, id and the user defined meta data.
 2. `GET /objst/read/{id}`: Read the payload of the object
 3. `DELETE /objst/{id}`: Delete the object
 4. `POST /objst/upload`: Upload a file to the object storage. The file will be retrived using opts.FormKey. The Content-Type of
    the object can be specified using the `contentType` key in the multipart form.
+
+The first three endpoints require authentication and authorization the last one only requires authentication and the `objst.CtxKeyOwner` set in the request context.
 
 ### Examples
 
