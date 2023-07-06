@@ -141,7 +141,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		}
 		// automatically add the unknown ext and contentType to the runtime.
 		// Error can be ignored because the extension is definetly not registered
-		// otherwise `NewObject` would have set `MetaKeyContentType` field.
+		// otherwise `NewObject` would have set the `MetaKeyContentType` meta data.
 		AddExtensionType(filepath.Ext(header.Filename), contentType)
 		obj.SetMetaKey(MetaKeyContentType, contentType)
 	}
