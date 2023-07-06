@@ -186,5 +186,5 @@ The different endpoints are as follow:
 
 ### Examples
 
-Some examples are being provided in the [exmples](./examples) directory. Use these as a starting point
+Some examples are being provided in the [examples](./examples) directory. Use these as a starting point
 and tailor the behavior to your liking and needed requirements.
