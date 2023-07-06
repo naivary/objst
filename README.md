@@ -170,10 +170,10 @@ allow all incoming request assigning some random owner to the request context.
 
 The different endpoints are as follow:
 
-1. GET /objst/{id}: Get the object as a model without the payload
-2. GET /objst/read/{id}: Read the payload of the object
-3. DELETE /objst/{id}: Delete the object
-4. POST /objst/upload: Upload a file to the object storage
+1. `GET /objst/{id}`: Get the object as a model without the payload. The model includes the name, owner, id and the user defined meta data.
+2. `GET /objst/read/{id}`: Read the payload of the object
+3. `DELETE /objst/{id}`: Delete the object
+4. `POST /objst/upload`: Upload a file to the object storage
 
 ### Examples
 
