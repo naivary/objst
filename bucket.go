@@ -73,9 +73,9 @@ func (b Bucket) Execute(q *Query) ([]*Object, error) {
 	id := q.params.Get(MetaKeyID)
 	owner := q.params.Get(MetaKeyOwner)
 	// check if it is a multi query
-	if q.op == Get && !q.isSingleEntry() {
+	if q.op == OperationGet && !q.isSingleEntry() {
 		return b.Get(q)
-	} else if q.op == Get && q.isSingleEntry() {
+	} else if q.op == OperationGet && q.isSingleEntry() {
 		// check which kind of single get it is
 		objs := make([]*Object, 0, 1)
 		var (
@@ -92,12 +92,12 @@ func (b Bucket) Execute(q *Query) ([]*Object, error) {
 
 	}
 
-	if q.op == Delete && !q.isSingleEntry() {
+	if q.op == OperationDelete && !q.isSingleEntry() {
 		err := b.Delete(q)
 		return defRes, err
 	}
 
-	if q.op == Delete && q.isSingleEntry() {
+	if q.op == OperationDelete && q.isSingleEntry() {
 		if q.isIDIdentifier() {
 			err := b.DeleteByID(id)
 			return defRes, err

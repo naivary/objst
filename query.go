@@ -25,9 +25,9 @@ const (
 type operation int
 
 const (
-	Delete = iota + 1
+	OperationDelete = iota + 1
 
-	Get
+	OperationGet
 )
 
 type Query struct {
@@ -44,7 +44,7 @@ func NewQuery() *Query {
 	return &Query{
 		params: NewMetadata(),
 		act:    Or,
-		op:     Get,
+		op:     OperationGet,
 	}
 }
 
@@ -114,4 +114,3 @@ func (q *Query) isSingleEntry() bool {
 func (q *Query) isIDIdentifier() bool {
 	return q.singleEntryIdentitifer == id
 }
-

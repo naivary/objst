@@ -246,15 +246,15 @@ func TestQueryDelete(t *testing.T) {
 	}{
 		{
 			name: "deleting one entry by id",
-			q:    NewQuery().ID(objs[0].ID()).Operation(Delete),
+			q:    NewQuery().ID(objs[0].ID()).Operation(OperationDelete),
 		},
 		{
 			name: "deleting multiple entries",
-			q:    NewQuery().Param(foo, bar).Operation(Delete),
+			q:    NewQuery().Param(foo, bar).Operation(OperationDelete),
 		},
 		{
 			name: "deleting one entry by name",
-			q:    NewQuery().Name(objs[11].Name()).Owner(objs[11].Owner()).Operation(Delete),
+			q:    NewQuery().Name(objs[11].Name()).Owner(objs[11].Owner()).Operation(OperationDelete),
 		},
 	}
 
