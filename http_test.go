@@ -225,7 +225,7 @@ func TestHTTPUploadUknownMimeTypeAndEmptyCt(t *testing.T) {
 	hl := injectOwner(tEnv.h)
 	w := httptest.NewRecorder()
 	hl.ServeHTTP(w, r)
-	if w.Code == http.StatusOK {
-		t.Fatalf("statuscode is not as expected. Got: %d. Expected: %d", w.Code, http.StatusBadRequest)
+	if w.Code != http.StatusOK {
+		t.Fatalf("statuscode is not as expected. Got: %d. Expected: %d", w.Code, http.StatusOK)
 	}
 }
