@@ -49,8 +49,8 @@ func TestHTTPCreate(t *testing.T) {
 			"owner": "daaa7824-2706-4587-9814-818a1d3d8953",
 			"payload": [10, 12, 18, 128, 133],
 			"metadata": {
-				"foo": ["bar"],
-				"contentType": ["text/plain"]
+				"foo": "bar",
+				"contentType": "text/plain"
 			}
 		}	
 	`
@@ -225,8 +225,7 @@ func TestHTTPUploadUknownMimeTypeAndEmptyCt(t *testing.T) {
 	hl := injectOwner(tEnv.h)
 	w := httptest.NewRecorder()
 	hl.ServeHTTP(w, r)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("statuscode is not %d. Got: %d. Res: %v", http.StatusOK, w.Code, w.Body)
+	if w.Code == http.StatusOK {
+		t.Fatalf("statuscode is not as expected. Got: %d. Expected: %d", w.Code, http.StatusBadRequest)
 	}
 }

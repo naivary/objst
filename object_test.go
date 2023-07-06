@@ -76,6 +76,13 @@ func TestWriteLargeFile(t *testing.T) {
 	}
 }
 
+func TestCustomContentType(t *testing.T) {
+	obj := tEnv.obj()
+	if obj.GetMetaKey(MetaKeyContentType) == "" {
+		t.Fatalf("content-type key is not set but should be.")
+	}
+}
+
 func BenchmarkWriteLargeFile(b *testing.B) {
 	image, err := os.ReadFile("./testdata/images/large.jpg")
 	if err != nil {

@@ -39,6 +39,7 @@ func newTestEnv() (*testEnv, error) {
 	tEnv.b = b
 	tEnv.h = NewHTTPHandler(b, DefaultHTTPHandlerOptions())
 	tEnv.ts = httptest.NewServer(tEnv.h)
+	AddExtensionType(".test", "test/text")
 	return &tEnv, nil
 }
 
@@ -62,7 +63,6 @@ func (t testEnv) emptyObj() *Object {
 
 func (t testEnv) obj() *Object {
 	o, _ := NewObject(t.name(), t.owner())
-	o.SetMetaKey(MetaKeyContentType, t.ContentType)
 	o.Write(t.payload(10))
 	return o
 }
