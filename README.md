@@ -40,7 +40,11 @@ func main() {
 
 NOTE: The owner of an object has to be a valid uuid-v4. The uuid can be created using the
 [google/uuid](https://github.com/google/uuid) package. It is used internally for testing
-and promises the most resilient results in production use.
+and promises the most resilient results in production use. If you don't differentiate between
+different owners you can use `objst.SystemOwner` which will assign a one time calculated
+uuid to the object. This should be only used if the different objects are all managed by the same
+owner and the object storage will only be consumed by the same owner over http. Otherwise you will
+risk some security issues on your end (no authorization).
 
 The object struct has implemented many useful interfaces which allow you to use it as a
 usual file. For example an object can be passed to any function which accepts an `io.Reader`,

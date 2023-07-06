@@ -13,6 +13,10 @@ const (
 	objectNamePattern = "^([a-zA-Z0-9_.\\/-]+)(\\.[a-z]+)$"
 )
 
+var (
+	SystemOwner = uuid.NewString()
+)
+
 type Object struct {
 	meta *Metadata
 	// payload of the object
