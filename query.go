@@ -75,7 +75,6 @@ func (q *Query) Operation(op operation) *Query {
 
 func (q *Query) isValid() error {
 	if q.params.isEmpty() {
-		fmt.Println(q.params)
 		return ErrEmptyQuery
 	}
 	if !isValidUUID(q.params.Get(MetaKeyOwner)) {
