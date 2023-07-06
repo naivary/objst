@@ -97,7 +97,7 @@ to the user defined multipart form key `objst.MetaKeyContentType`. If none is pr
 found it will automatically be registered to the runtime and the content-type meta data will be specified. Every new object
 created after the extension is registered to the runtime using `objst.NewObject` will automatically have the `MetaKeyContentType`
 set so you don't have to worry about it. To make your life as easy as possible you can any kind of init function which will
-register your unofficial mime types using `objst.AddExtensionType`:
+register your unofficial mime types using `mime.AddExtensionType`:
 
 ```golang
 func main() {
@@ -121,6 +121,8 @@ func run() error {
   }
 }
 ```
+
+An example ist provided at [examples](./examples/mime/).
 
 ### Queries
 
