@@ -63,7 +63,7 @@ func TestNamePattern(t *testing.T) {
 	}
 }
 
-func TestWriteLargeFile(t *testing.T) {
+func TestWrite_largeFile(t *testing.T) {
 	o1 := tEnv.emptyObj()
 	image, err := os.ReadFile("./testdata/images/large.jpg")
 	if err != nil {

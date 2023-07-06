@@ -117,7 +117,7 @@ func (t testEnv) destroy() error {
 	if err := t.b.meta.Close(); err != nil {
 		return err
 	}
-	if err := os.RemoveAll(t.b.uniqueBasePath); err != nil {
+	if err := os.RemoveAll(t.b.BasePath); err != nil {
 		return err
 	}
 	t.ts.Close()

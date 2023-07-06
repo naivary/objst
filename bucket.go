@@ -25,7 +25,7 @@ type Bucket struct {
 
 	meta *badger.DB
 
-	uniqueBasePath string
+	BasePath string
 }
 
 // NewBucket will create a new object storage with the provided options.
@@ -50,10 +50,10 @@ func NewBucket(opts BucketOptions) (*Bucket, error) {
 		return nil, err
 	}
 	b := &Bucket{
-		payload:        payload,
-		names:          names,
-		meta:           meta,
-		uniqueBasePath: uniqueBasePath,
+		payload:  payload,
+		names:    names,
+		meta:     meta,
+		BasePath: uniqueBasePath,
 	}
 	return b, nil
 }
