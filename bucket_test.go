@@ -176,13 +176,17 @@ func TestQueryGet(t *testing.T) {
 			break
 		}
 	}
+	owner := tEnv.owner()
+	objs[12].meta.set(MetaKeyName, "name_foo.txt")
+	objs[12].meta.set(MetaKeyOwner, owner)
+	objs[13].meta.set(MetaKeyName, "name_bar.txt")
+	objs[13].meta.set(MetaKeyOwner, owner)
 	for _, obj := range objs {
 		if err := tEnv.b.Create(obj); err != nil {
 			t.Error(err)
 			return
 		}
 	}
-
 	tests := []struct {
 		name string
 		q    *Query
@@ -192,6 +196,11 @@ func TestQueryGet(t *testing.T) {
 			name: "fetching multiple objects",
 			q:    NewQuery().Param(foo, bar),
 			c:    limit + 1,
+		},
+		{
+			name: "fetching multiple objects by regexp name",
+			q:    NewQuery().Param(MetaKeyName, "name_.*").Owner(owner),
+			c:    2,
 		},
 		{
 			name: "fetching only one by id",

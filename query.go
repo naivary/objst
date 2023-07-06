@@ -74,7 +74,7 @@ func (q *Query) Action(act action) *Query {
 // Param sets a given key value pair as a parameter
 // of the query.
 func (q *Query) Param(k MetaKey, v string) *Query {
-	q.params.Set(k, v)
+	q.params.set(k, v)
 	return q
 }
 
@@ -84,7 +84,8 @@ func (q *Query) Operation(op operation) *Query {
 }
 
 func (q *Query) isValid() error {
-	if len(q.params.data) <= 0 {
+	if q.params.isEmpty() {
+		fmt.Println(q.params)
 		return ErrEmptyQuery
 	}
 	if !isValidUUID(q.params.Get(MetaKeyOwner)) {

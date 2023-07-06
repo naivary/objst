@@ -3,7 +3,9 @@ package objst
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"net/url"
+	"regexp"
 
 	"golang.org/x/exp/slices"
 )
@@ -119,19 +121,32 @@ func (m *Metadata) Compare(md *Metadata, act action) bool {
 }
 
 func (m Metadata) or(md *Metadata) bool {
-	for k := range m.data {
-		if md.Has(k) {
+	for k, v := range m.data {
+		ok, _ := regexp.MatchString(metaPattern(v), md.Get(k))
+		if md.Has(k) && ok {
 			return true
 		}
+
 	}
 	return false
 }
 
 func (m Metadata) and(md *Metadata) bool {
-	for k := range m.data {
+	for k, v := range m.data {
 		if !md.Has(k) {
+			return false
+		}
+		if ok, _ := regexp.MatchString(metaPattern(v), md.Get(k)); !ok {
 			return false
 		}
 	}
 	return true
+}
+
+func (m Metadata) isEmpty() bool {
+	return len(m.data) == 0
+}
+
+func metaPattern(pattern string) string {
+	return fmt.Sprintf("^%s$", pattern)
 }
