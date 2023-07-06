@@ -174,3 +174,8 @@ The different endpoints are as follow:
 2. GET /objst/read/{id}: Read the payload of the object
 3. DELETE /objst/{id}: Delete the object
 4. POST /objst/upload: Upload a file to the object storage
+
+### Examples
+
+Some examples are being provided in the [exmples](./examples) directory. Use these as a starting point
+and tailor the behavior to your liking and needed requirements.
