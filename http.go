@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -138,6 +139,10 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
+		// automatically add the unknown ext and contentType to the runtime.
+		// Error can be ignored because the extension is definetly not registered
+		// otherwise `NewObject` would have set `MetaKeyContentType` field.
+		AddExtensionType(filepath.Ext(header.Filename), contentType)
 		obj.SetMetaKey(MetaKeyContentType, contentType)
 	}
 	if err := h.bucket.Create(obj); err != nil {

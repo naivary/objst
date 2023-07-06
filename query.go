@@ -114,3 +114,4 @@ func (q *Query) isSingleEntry() bool {
 func (q *Query) isIDIdentifier() bool {
 	return q.singleEntryIdentitifer == id
 }
+
