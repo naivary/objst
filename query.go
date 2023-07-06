@@ -14,14 +14,6 @@ const (
 	And
 )
 
-type identifier int
-
-const (
-	id identifier = iota + 1
-
-	name
-)
-
 type operation int
 
 const (
@@ -36,8 +28,6 @@ type Query struct {
 	act action
 
 	op operation
-
-	singleEntryIdentitifer identifier
 }
 
 func NewQuery() *Query {
@@ -98,20 +88,4 @@ func (q *Query) isValid() error {
 		return ErrNameOwnerCtxMissing
 	}
 	return nil
-}
-
-func (q *Query) isSingleEntry() bool {
-	if q.params.Get(MetaKeyID) != "" {
-		q.singleEntryIdentitifer = id
-		return true
-	}
-	if q.params.Get(MetaKeyName) != "" {
-		q.singleEntryIdentitifer = name
-		return true
-	}
-	return false
-}
-
-func (q *Query) isIDIdentifier() bool {
-	return q.singleEntryIdentitifer == id
 }

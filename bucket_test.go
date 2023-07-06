@@ -14,7 +14,6 @@ func TestCreate(t *testing.T) {
 		return
 	}
 }
-
 func TestGetByID(t *testing.T) {
 	o := tEnv.obj()
 	if err := tEnv.b.Create(o); err != nil {

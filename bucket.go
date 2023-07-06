@@ -21,11 +21,7 @@ type Bucket struct {
 	// store persists the objects and the
 	// actual data the client will interact with.
 	payload *badger.DB
-	// names is a helper db, storing the different names
-	// of the objects. It assures a quick and easy way to
-	// check if a names exists, without unmarshaling the
-	// objects.
-	names *badger.DB
+	names   *badger.DB
 
 	meta *badger.DB
 
@@ -69,44 +65,11 @@ func (b Bucket) Execute(q *Query) ([]*Object, error) {
 	// empty object array for operation which
 	// do not return any objects
 	var defRes []*Object
-	name := q.params.Get(MetaKeyName)
-	id := q.params.Get(MetaKeyID)
-	owner := q.params.Get(MetaKeyOwner)
 	// check if it is a multi query
-	if q.op == OperationGet && !q.isSingleEntry() {
+	if q.op == OperationGet {
 		return b.Get(q)
-	} else if q.op == OperationGet && q.isSingleEntry() {
-		// check which kind of single get it is
-		objs := make([]*Object, 0, 1)
-		var (
-			obj *Object
-			err error
-		)
-		if q.isIDIdentifier() {
-			obj, err = b.GetByID(id)
-		} else {
-			obj, err = b.GetByName(name, owner)
-		}
-		objs = append(objs, obj)
-		return objs, err
-
 	}
-
-	if q.op == OperationDelete && !q.isSingleEntry() {
-		err := b.Delete(q)
-		return defRes, err
-	}
-
-	if q.op == OperationDelete && q.isSingleEntry() {
-		if q.isIDIdentifier() {
-			err := b.DeleteByID(id)
-			return defRes, err
-		}
-		err := b.DeleteByName(name, owner)
-		return defRes, err
-	}
-
-	return nil, nil
+	return defRes, b.Delete(q)
 }
 
 func (b Bucket) GetByID(id string) (*Object, error) {
