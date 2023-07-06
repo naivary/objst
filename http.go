@@ -3,6 +3,7 @@ package objst
 import (
 	"encoding/json"
 	"io"
+	"mime"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -142,7 +143,7 @@ func (h *HTTPHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		// automatically add the unknown ext and contentType to the runtime.
 		// Error can be ignored because the extension is definetly not registered
 		// otherwise `NewObject` would have set the `MetaKeyContentType` meta data.
-		AddExtensionType(filepath.Ext(header.Filename), contentType)
+		mime.AddExtensionType(filepath.Ext(header.Filename), contentType)
 		obj.SetMetaKey(MetaKeyContentType, contentType)
 	}
 	if err := h.bucket.Create(obj); err != nil {

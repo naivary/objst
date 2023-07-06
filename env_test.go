@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +40,7 @@ func newTestEnv() (*testEnv, error) {
 	tEnv.b = b
 	tEnv.h = NewHTTPHandler(b, DefaultHTTPHandlerOptions())
 	tEnv.ts = httptest.NewServer(tEnv.h)
-	AddExtensionType(".test", "test/text")
+	mime.AddExtensionType(".test", "text/plain")
 	return &tEnv, nil
 }
 

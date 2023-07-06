@@ -91,10 +91,36 @@ meta data in a convenient way. Calling `ID()` is the same as `obj.GetMetaKey(obj
 #### objst.MetaKeyContentType
 
 One of the most important meta data is the content-type of the object. This will be used as the content-type to
-serve the object over http and is required for every object. objst is making best effort assumptions to get the officail
+serve the object over http and is required for every object. objst is making best effort assumptions to get the official
 mime-type of the uploaded file using the specified file extension. If the file extension cannot be found it will fallback
-to the user defined multipart form key `contentType`. If none is provided an error will be returned. If one is found it will
-automatically be registered to the runtime and the content-type meta data will be specified.
+to the user defined multipart form key `objst.MetaKeyContentType`. If none is provided an error will be returned. If one is
+found it will automatically be registered to the runtime and the content-type meta data will be specified. Every new object
+created after the extension is registered to the runtime using `objst.NewObject` will automatically have the `MetaKeyContentType`
+set so you don't have to worry about it. To make your life as easy as possible you can any kind of init function which will
+register your unofficial mime types using `objst.AddExtensionType`:
+
+```golang
+func main() {
+  if err := run(); err != nil {
+    log.Fatal(err)
+  }
+}
+
+// run can also be named `init` so the go
+// runtime will be calling it on your behalf.
+// But be aware that using init is sometimes
+// not considered best practice (uber-styleguide/google-styleguid)
+func run() error {
+  // every extension has to begin with a leading `.`
+  unofficialTypes := map[string]string{
+    ".test": "text/plain",
+  }
+
+  for ext, mimeType := range unofficialTypes {
+    objst.AddExtensionType(ext, mimeType)
+  }
+}
+```
 
 ### Queries
 
