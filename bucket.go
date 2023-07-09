@@ -21,7 +21,7 @@ type Bucket struct {
 	// store persists the objects and the
 	// actual data the client will interact with.
 	payload *badger.DB
-	names   *badger.DB
+	name    *badger.DB
 
 	meta *badger.DB
 
@@ -40,7 +40,7 @@ func NewBucket(opts BucketOptions) (*Bucket, error) {
 		return nil, err
 	}
 	nameDataDir := filepath.Join(uniqueBasePath, nameDir)
-	names, err := badger.Open(badger.DefaultOptions(nameDataDir))
+	name, err := badger.Open(badger.DefaultOptions(nameDataDir))
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func NewBucket(opts BucketOptions) (*Bucket, error) {
 	}
 	b := &Bucket{
 		payload:  payload,
-		names:    names,
+		name:     name,
 		meta:     meta,
 		BasePath: uniqueBasePath,
 	}
@@ -77,19 +77,7 @@ func (b Bucket) GetByID(id string) (*Object, error) {
 }
 
 func (b Bucket) GetByName(name, owner string) (*Object, error) {
-	var id string
-	err := b.names.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
-		if err != nil {
-			return err
-		}
-		dst := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(dst); err != nil {
-			return err
-		}
-		id = string(dst)
-		return nil
-	})
+	id, err := b.getIDByName(name, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -196,19 +184,10 @@ func (b Bucket) DeleteByID(id string) error {
 }
 
 func (b Bucket) DeleteByName(name, owner string) error {
-	var id string
-	b.names.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
-		if err != nil {
-			return err
-		}
-		dst := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(dst); err != nil {
-			return err
-		}
-		id = string(dst)
-		return nil
-	})
+	id, err := b.getIDByName(name, owner)
+	if err != nil {
+		return err
+	}
 	return b.DeleteByID(id)
 }
 
@@ -228,7 +207,7 @@ func (b Bucket) Shutdown() error {
 	if err := b.meta.Close(); err != nil {
 		return err
 	}
-	return b.names.Close()
+	return b.name.Close()
 }
 
 func (b Bucket) getMatchingIDs(q *Query) ([]string, error) {
@@ -275,7 +254,7 @@ func (b Bucket) idsToObjs(ids []string) ([]*Object, error) {
 }
 
 func (b Bucket) isNameExisting(name, owner string) bool {
-	err := b.names.View(func(txn *badger.Txn) error {
+	err := b.name.View(func(txn *badger.Txn) error {
 		_, err := txn.Get([]byte(b.nameFormat(name, owner)))
 		return err
 	})
@@ -283,7 +262,7 @@ func (b Bucket) isNameExisting(name, owner string) bool {
 }
 
 func (b Bucket) insertName(name, owner, id string) error {
-	return b.names.Update(func(txn *badger.Txn) error {
+	return b.name.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(b.nameFormat(name, owner)), []byte(id))
 	})
 }
@@ -305,7 +284,7 @@ func (b Bucket) insertPayload(id string, pl []byte) error {
 }
 
 func (b Bucket) deleteName(name, owner string) error {
-	return b.names.Update(func(txn *badger.Txn) error {
+	return b.name.Update(func(txn *badger.Txn) error {
 		return txn.Delete([]byte(b.nameFormat(name, owner)))
 	})
 }
@@ -372,4 +351,21 @@ func (b Bucket) composeObjectByID(id string) (*Object, error) {
 		return nil, err
 	}
 	return b.composeObject(meta)
+}
+
+func (b Bucket) getIDByName(name, owner string) (string, error) {
+	var id string
+	err := b.name.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(b.nameFormat(name, owner)))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		id = string(dst)
+		return nil
+	})
+	return id, err
 }

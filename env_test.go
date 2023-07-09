@@ -108,13 +108,7 @@ func (t testEnv) newUploadRequest(url string, params map[string]string, formKey 
 }
 
 func (t testEnv) destroy() error {
-	if err := t.b.payload.Close(); err != nil {
-		return err
-	}
-	if err := t.b.names.Close(); err != nil {
-		return err
-	}
-	if err := t.b.meta.Close(); err != nil {
+	if err := t.b.Shutdown(); err != nil {
 		return err
 	}
 	if err := os.RemoveAll(t.b.BasePath); err != nil {
