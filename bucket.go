@@ -150,6 +150,23 @@ func (b Bucket) Delete(q *Query) error {
 	return nil
 }
 
+func (b Bucket) GetPayload(id string) ([]byte, error) {
+	var payload []byte
+	err := b.payload.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		dst := make([]byte, item.ValueSize())
+		if _, err := item.ValueCopy(dst); err != nil {
+			return err
+		}
+		payload = dst
+		return nil
+	})
+	return payload, err
+}
+
 func (b Bucket) GetMeta(id string) (*Metadata, error) {
 	meta := NewMetadata()
 	err := b.meta.View(func(txn *badger.Txn) error {
@@ -310,7 +327,6 @@ func (b Bucket) nameFormat(name, owner string) string {
 }
 
 // createObjectEntry validates the object and creates a entry.
-// Also the object will be marked as immutable.
 func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 	if err := obj.isValid(); err != nil {
 		return nil, err
@@ -331,17 +347,11 @@ func (b Bucket) composeObject(meta *Metadata) (*Object, error) {
 	obj := &Object{
 		meta: meta,
 	}
-	err := b.payload.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(id))
-		if err != nil {
-			return err
-		}
-		dst := make([]byte, item.ValueSize())
-		if _, err := item.ValueCopy(dst); err != nil {
-			return err
-		}
-		return obj.Unmarshal(dst)
-	})
+	pl, err := b.GetPayload(id)
+	if err != nil {
+		return nil, err
+	}
+	err = obj.Unmarshal(pl)
 	return obj, err
 }
 
