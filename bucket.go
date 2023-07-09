@@ -64,12 +64,11 @@ func (b Bucket) Execute(q *Query) ([]*Object, error) {
 	}
 	// empty object array for operation which
 	// do not return any objects
-	var defRes []*Object
-	// check if it is a multi query
+	var defaultRes []*Object
 	if q.op == OperationGet {
 		return b.Get(q)
 	}
-	return defRes, b.Delete(q)
+	return defaultRes, b.Delete(q)
 }
 
 func (b Bucket) GetByID(id string) (*Object, error) {
