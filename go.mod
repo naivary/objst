@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/dgraph-io/badger/v4 v4.1.0
 	github.com/go-chi/chi/v5 v5.0.8
+	github.com/google/go-cmp v0.5.9
 	github.com/google/uuid v1.3.0
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 )
@@ -19,7 +20,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/klauspost/compress v1.16.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect

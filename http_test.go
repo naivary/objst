@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 )
 
@@ -126,18 +127,9 @@ func TestHTTPGet(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	data1, err := json.Marshal(&m)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	data2, err := json.Marshal(o.ToModel())
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if !bytes.Equal(data1, data2) {
-		t.Fatalf("models are not equal. Got: %v. Expected: %v", m, o.ToModel())
+	if ok := cmp.Equal(&m, o.ToModel()); !ok {
+		s := cmp.Diff(&m, o.ToModel())
+		t.Fatalf("models are not equal. Got: %s", s)
 	}
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("statuscode is not %d", http.StatusOK)
