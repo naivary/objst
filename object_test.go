@@ -65,7 +65,7 @@ func TestNamePattern(t *testing.T) {
 
 func TestWrite_largeFile(t *testing.T) {
 	o1 := tEnv.emptyObj()
-	image, err := os.ReadFile("./testdata/images/large.jpg")
+	image, err := os.ReadFile("./testdata/images/2500KB.jpg")
 	if err != nil {
 		t.Error(err)
 		return
@@ -84,7 +84,7 @@ func TestCustomContentType(t *testing.T) {
 }
 
 func BenchmarkWriteLargeFile(b *testing.B) {
-	image, err := os.ReadFile("./testdata/images/large.jpg")
+	image, err := os.ReadFile("./testdata/images/2500KB.jpg")
 	if err != nil {
 		b.Error(err)
 		return

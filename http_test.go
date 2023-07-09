@@ -150,7 +150,7 @@ func TestHTTPUpload(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	r, err := tEnv.newUploadRequest(target, nil, tEnv.h.opts.FormKey, "testdata/images/large.jpg")
+	r, err := tEnv.newUploadRequest(target, nil, tEnv.h.opts.FormKey, "testdata/images/2500KB.jpg")
 	if err != nil {
 		t.Error(err)
 		return

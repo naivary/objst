@@ -187,16 +187,7 @@ func (b Bucket) DeleteByID(id string) error {
 	if err != nil {
 		return err
 	}
-	if err := b.deletePayload(id); err != nil {
-		return err
-	}
-	if err != nil {
-		return err
-	}
-	if err := b.deleteName(meta.Get(MetaKeyName), meta.Get(MetaKeyOwner)); err != nil {
-		return err
-	}
-	return b.deleteMeta(id)
+	return b.deleteObject(meta)
 }
 
 func (b Bucket) DeleteByName(name, owner string) error {
@@ -342,11 +333,10 @@ func (b Bucket) createObjectEntry(obj *Object) (*badger.Entry, error) {
 }
 
 func (b Bucket) composeObject(meta *Metadata) (*Object, error) {
-	id := meta.Get(MetaKeyID)
 	obj := &Object{
 		meta: meta,
 	}
-	pl, err := b.GetPayload(id)
+	pl, err := b.GetPayload(meta.Get(MetaKeyID))
 	if err != nil {
 		return nil, err
 	}
@@ -377,4 +367,19 @@ func (b Bucket) getIDByName(name, owner string) (string, error) {
 		return nil
 	})
 	return id, err
+}
+
+// deleteObject will delete all parts of an object
+// including metadata, name and payload entry.
+func (b Bucket) deleteObject(meta *Metadata) error {
+	id := meta.Get(MetaKeyID)
+	name := meta.Get(MetaKeyName)
+	owner := meta.Get(MetaKeyOwner)
+	if err := b.deleteName(name, owner); err != nil {
+		return err
+	}
+	if err := b.deletePayload(id); err != nil {
+		return err
+	}
+	return b.deleteMeta(id)
 }
